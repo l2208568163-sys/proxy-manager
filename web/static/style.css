@@ -19,6 +19,12 @@ h1 {
   font-weight: 600;
 }
 
+.topbar {
+  text-align: right;
+  font-size: 13px;
+}
+.topbar a { color: #80d8ff; text-decoration: none; }
+
 .card {
   background: #1c1c1c;
   padding: 18px 22px;
@@ -41,7 +47,6 @@ h1 {
   margin: 8px 0;
   font-size: 15px;
 }
-
 .row span { color: #aaa; }
 .row b { font-weight: 600; }
 
@@ -51,9 +56,70 @@ h1 {
   font-size: 14px;
 }
 
+button {
+  margin-top: 10px;
+  background: #4fc3f7;
+  color: #111;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+button:hover { background: #29b6f6; }
+
+.btn {
+  display: inline-block;
+  margin: 4px 8px 4px 0;
+  padding: 6px 14px;
+  background: #263238;
+  color: #80d8ff;
+  border: 1px solid #37474f;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+}
+.btn:hover { background: #37474f; }
+
+.qr {
+  display: block;
+  width: 220px;
+  height: 220px;
+  background: #fff;
+  padding: 8px;
+  border-radius: 8px;
+}
+.hint { color: #aaa; font-size: 13px; }
+
 .warn {
   text-align: center;
   color: #ffb74d;
   font-size: 13px;
   margin-top: 24px;
+}
+
+/* 登录页 */
+.login-card { max-width: 360px; margin: 18px auto; }
+.login-card form { display: flex; flex-direction: column; gap: 12px; }
+.login-card input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #37474f;
+  background: #111;
+  color: #eee;
+  font-size: 14px;
+}
+.err { color: #ff8a80; font-size: 13px; }
+
+/* 日志页 */
+.log {
+  background: #000;
+  color: #b9f6ca;
+  padding: 14px;
+  border-radius: 8px;
+  max-height: 70vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 13px;
 }
