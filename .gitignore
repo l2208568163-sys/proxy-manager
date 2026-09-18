@@ -1,16 +1,7 @@
-# Runtime data
-/data/
-*.env
-*.key
-*.pem
+# Python
+__pycache__/
+*.pyc
+web/venv/
 
-# Logs
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Local workspace metadata
+# 本地工作数据
 .workbuddy/
-conversation.txt
