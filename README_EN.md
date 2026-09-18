@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/l2208568163-sys/proxy-manager"><img src="https://img.shields.io/github/stars/l2208568163-sys/proxy-manager" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/l2208568163-sys/proxy-manager" alt="GitHub license"></a>
-  <img src="https://img.shields.io/badge/version-3.2.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.2.2-blue" alt="Version">
 </p>
 
 <p align="center">
@@ -184,6 +184,7 @@ Proxy-Manager
 - [x] **v3.1** Xray Reality / Mihomo / Clash subscription / DNS optimization
 - [x] **v3.2** Web Dashboard / service status / resource monitoring
 - [x] **v3.2.1** Login auth / restart & logs / subscription copy / node QR code
+- [x] **v3.2.2** Bug fix: install.sh Python deps / dynamic proxy path / Clash xudp / configurable Reality dest
 - [ ] **v3.3** Multi-node management / traffic stats / API management
 
 ---

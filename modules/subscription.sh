@@ -14,6 +14,7 @@ log-level: warning
 ipv6: false
 unified-delay: true
 tcp-concurrent: true
+packet-encoding: xudp
 dns:
   enable: true
   listen: 127.0.0.1:1053
