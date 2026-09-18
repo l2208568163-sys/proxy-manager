@@ -1,2 +1,16 @@
+# Runtime data
+/data/
+*.env
+*.key
+*.pem
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local workspace metadata
 .workbuddy/
 conversation.txt
