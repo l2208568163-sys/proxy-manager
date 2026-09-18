@@ -1,5 +1,8 @@
 # Proxy Manager
 
+![Linux](https://img.shields.io/badge/Linux-Ubuntu-orange)
+![Xray](https://img.shields.io/badge/Xray-Reality-blue)
+![Mihomo](https://img.shields.io/badge/Mihomo-Clash_Meta-green)
 > Ubuntu 上的 Xray Reality 节点、Mihomo 客户端和订阅文件管理工具。
 
 当前版本：`3.2.0`
