@@ -9,6 +9,7 @@
 <body>
   <div class="box">
     <h1>Proxy Manager v3.2</h1>
+    <p class="topbar"><a href="/logout">退出登录</a></p>
 
     <div class="card">
       <h2>服务状态</h2>
@@ -33,10 +34,38 @@
 
     <div class="card">
       <h2>Clash 订阅</h2>
-      <p class="link">{{ clash }}</p>
+      <p class="link" id="sub">{{ clash }}</p>
+      <button onclick="copySub()">复制订阅</button>
     </div>
 
-    <p class="warn">⚠ 当前面板无登录认证，请勿在公网直接暴露 8080 端口；建议仅本地访问，或通过带认证的反向代理暴露。</p>
+    <div class="card">
+      <h2>节点二维码</h2>
+      {% if qr %}
+        <img class="qr" src="{{ qr }}" alt="订阅二维码">
+        <p class="hint">手机 Clash 扫码导入订阅</p>
+      {% else %}
+        <p class="hint">二维码不可用（未安装 qrcode 或节点未配置）</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h2>服务控制</h2>
+      <p><a class="btn" href="/restart/xray">重启 Xray</a> <a class="btn" href="/logs/xray">Xray 日志</a></p>
+      <p><a class="btn" href="/restart/mihomo">重启 Mihomo</a> <a class="btn" href="/logs/mihomo">Mihomo 日志</a></p>
+    </div>
   </div>
+
+  <script>
+    function copySub() {
+      var t = document.getElementById("sub").innerText.trim();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t).then(function () { alert("复制成功"); });
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = t; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta); alert("复制成功");
+      }
+    }
+  </script>
 </body>
 </html>

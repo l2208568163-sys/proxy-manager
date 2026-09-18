@@ -5,3 +5,5 @@ web/venv/
 
 # 本地工作数据
 .workbuddy/
+data/web.env
+data/node.env
