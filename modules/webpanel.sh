@@ -11,7 +11,9 @@ WEB_ENV="$DATA_DIR/web.env"
 install_panel() {
   require_command python3
   # 用 venv 隔离依赖，规避系统 Python 的 PEP 668 (externally-managed) 限制
-  python3 -m venv "$WEB_DIR/venv"
+  # 若 venv 已存在则复用，但始终重装/补齐依赖（修复旧 venv 缺包，如 python-multipart）
+  [[ -x "$WEB_DIR/venv/bin/pip" ]] || python3 -m venv "$WEB_DIR/venv"
+  "$WEB_DIR/venv/bin/pip" install -q --upgrade pip
   "$WEB_DIR/venv/bin/pip" install -q -r "$WEB_DIR/requirements.txt"
 
   # 生成随机后台密码（仅首次），不写死默认密码，避免随仓库泄露
