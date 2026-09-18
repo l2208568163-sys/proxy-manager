@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proxy Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="box">
+    <h1>Proxy Manager v3.2</h1>
+
+    <div class="card">
+      <h2>服务状态</h2>
+      <p class="row"><span>Xray</span><b>{{ xray }}</b></p>
+      <p class="row"><span>Mihomo</span><b>{{ mihomo }}</b></p>
+      <p class="row"><span>AdGuard DNS</span><b>{{ dns }}</b></p>
+    </div>
+
+    <div class="card">
+      <h2>服务器</h2>
+      <p class="row"><span>IP</span><b>{{ server }}</b></p>
+      <p class="row"><span>CPU</span><b>{{ cpu }} %</b></p>
+      <p class="row"><span>Memory</span><b>{{ memory }} %</b></p>
+      <p class="row"><span>Network ↓/↑</span><b>{{ net_recv }} / {{ net_sent }}</b></p>
+    </div>
+
+    <div class="card">
+      <h2>Reality 节点</h2>
+      <p class="row"><span>Server</span><b>{{ server }}</b></p>
+      <p class="row"><span>端口</span><b>{{ port }} TCP</b></p>
+    </div>
+
+    <div class="card">
+      <h2>Clash 订阅</h2>
+      <p class="link">{{ clash }}</p>
+    </div>
+
+    <p class="warn">⚠ 当前面板无登录认证，请勿在公网直接暴露 8080 端口；建议仅本地访问，或通过带认证的反向代理暴露。</p>
+  </div>
+</body>
+</html>
