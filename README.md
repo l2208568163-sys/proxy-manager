@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/l2208568163-sys/proxy-manager"><img src="https://img.shields.io/github/stars/l2208568163-sys/proxy-manager" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/l2208568163-sys/proxy-manager" alt="GitHub license"></a>
-  <img src="https://img.shields.io/badge/version-3.2.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.2.3-blue" alt="Version">
 </p>
 
 <p align="center">
@@ -188,6 +188,7 @@ Proxy-Manager
 - [x] **v3.2** Web Dashboard / 服务状态 / 资源监控
 - [x] **v3.2.1** 登录认证 / 服务重启与日志 / 订阅复制 / 节点二维码
 - [x] **v3.2.2** Bug 修复：install.sh 补全 Python 依赖 / proxy 命令动态路径 / Clash 订阅 xudp / Reality dest 可配置
+- [x] **v3.2.3** 引导层：install.sh 自动安装 Web 面板并打印访问信息 / webpanel.sh 增加启动·停止·地址·凭据·重置密码管理项 / 主菜单 Web 入口标星
 - [ ] **v3.3** 多节点管理 / 流量统计 / API 管理
 
 ---

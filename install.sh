@@ -131,16 +131,11 @@ install -d -m 0700 "$INSTALL_DIR/data"
 install -d -m 0755 "$INSTALL_DIR/logs"
 
 ####################################################
-# Install Python Web Environment (best-effort)
+# Install Web Dashboard (auto, best-effort)
 ####################################################
-if [[ -d "$INSTALL_DIR/web" ]]; then
-  info "安装 Web 面板依赖 (venv)"
-  (
-    cd "$INSTALL_DIR/web"
-    python3 -m venv venv
-    ./venv/bin/pip install --upgrade pip
-    [[ -f requirements.txt ]] && ./venv/bin/pip install -r requirements.txt
-  ) || warn "Web 依赖安装失败，可稍后通过主菜单 12 重新安装"
+if [[ -f "$INSTALL_DIR/modules/webpanel.sh" ]]; then
+  info "安装 Web 管理面板"
+  bash "$INSTALL_DIR/modules/webpanel.sh" install || warn "Web 面板安装失败，可稍后运行 proxy 主菜单 12 重新安装"
 fi
 
 ####################################################
@@ -181,7 +176,18 @@ echo "
 目录:   $INSTALL_DIR
 命令:   proxy
 版本:   $VERSION
-
-下一步: 运行 proxy 打开主菜单
-========================================
+"
+if [[ -f "$INSTALL_DIR/data/web.env" ]]; then
+  # shellcheck disable=SC1090
+  source "$INSTALL_DIR/data/web.env"
+  IP="$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')"
+  echo
+  echo "Web 控制台: http://$IP:8080"
+  echo "账号:       ${WEB_USER:-admin}"
+  echo "密码:       ${WEB_PASS:-<见 data/web.env>}"
+  echo "（公网暴露建议加反向代理或仅本地/SSH 隧道访问）"
+fi
+echo
+echo "下一步: 运行 proxy 打开主菜单；选 1 生成 Xray 节点、选 2 生成 Clash 订阅、选 12 管理 Web 面板"
+echo "========================================
 "

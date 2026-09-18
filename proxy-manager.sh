@@ -13,7 +13,7 @@ svc() { if service_is_active "$1" 2>/dev/null; then printf '运行中'; else pri
 while true; do
   clear; say "================================"; say " 代理管理器 Proxy Manager v$(<"$BASE_DIR/VERSION")"; say "================================"
   say "服务状态 — Xray:$(svc xray) | Mihomo:$(svc mihomo) | AdGuardDNS:$(svc AdGuardHome) | Web面板:$(svc proxy-web) | Nginx:$(svc nginx)"
-  say "1. Xray Reality 节点"; say "2. Clash 订阅"; say "3. Mihomo 客户端"; say "4. DNS 管理"; say "5. 系统优化"; say "6. 安全加固"; say "7. Web 订阅服务"; say "8. 健康检查"; say "9. 查看节点信息"; say "10. 更新程序"; say "11. 卸载 Proxy Manager"; say "12. Web 管理面板"; say "0. 退出"
+  say "1. Xray Reality 节点"; say "2. Clash 订阅"; say "3. Mihomo 客户端"; say "4. DNS 管理"; say "5. 系统优化"; say "6. 安全加固"; say "7. Web 订阅服务"; say "8. 健康检查"; say "9. 查看节点信息"; say "10. 更新程序"; say "11. 卸载 Proxy Manager"; say "12. Web 管理中心 ⭐"; say "0. 退出"
   read -r -p "请选择: " c
   case "$c" in
     1) "$BASE_DIR/modules/xray.sh";;
