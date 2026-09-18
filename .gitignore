@@ -3,7 +3,14 @@ __pycache__/
 *.pyc
 web/venv/
 
-# 本地工作数据
+# 本地工作数据（运行时生成，含节点私钥 / Web 凭据）
 .workbuddy/
-data/web.env
-data/node.env
+data/
+logs/
+
+# 密钥 / 证书（运行时生成）
+*.key
+*.pem
+
+# 注意：configs/ 下的 *.yaml / *.tpl 是项目源模板（如 mihomo-client.yaml、
+# xray-reality.json.tpl），必须保持跟踪，不要 ignore。
