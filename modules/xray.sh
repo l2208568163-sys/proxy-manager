@@ -4,6 +4,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh
 source "$SCRIPT_DIR/../lib/common.sh"
 SNI="${REALITY_SERVER_NAME:-www.cloudflare.com}"
+REALITY_DEST="${REALITY_DEST:-$SNI:443}"
 key() { awk -F': *' -v n="$1" 'tolower($0) ~ n {sub(/^[^:]*:[[:space:]]*/, ""); print; exit}' <<<"$2"; }
 install_xray() {
   local port keys private public uuid short server
@@ -14,7 +15,7 @@ install_xray() {
   short="$(openssl rand -hex 8)"; server="$(detect_public_ip)" || die "Unable to detect public IPv4."
   install -d -m 0755 "$(dirname "$XRAY_CONFIG")" "$DATA_DIR"
   cat >"$XRAY_CONFIG" <<EOF
-{"log":{"loglevel":"warning"},"inbounds":[{"listen":"0.0.0.0","port":$port,"protocol":"vless","settings":{"clients":[{"id":"$uuid","flow":"xtls-rprx-vision"}],"decryption":"none"},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"show":false,"dest":"$SNI:443","xver":0,"serverNames":["$SNI"],"privateKey":"$private","shortIds":["$short"]}}}],"outbounds":[{"protocol":"freedom"}]}
+{"log":{"loglevel":"warning"},"inbounds":[{"listen":"0.0.0.0","port":$port,"protocol":"vless","settings":{"clients":[{"id":"$uuid","flow":"xtls-rprx-vision"}],"decryption":"none"},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"show":false,"dest":"$REALITY_DEST","xver":0,"serverNames":["$SNI"],"privateKey":"$private","shortIds":["$short"]}}}],"outbounds":[{"protocol":"freedom"}]}
 EOF
   xray run -test -c "$XRAY_CONFIG" >/dev/null
   umask 077; cat >"$NODE_FILE" <<EOF
