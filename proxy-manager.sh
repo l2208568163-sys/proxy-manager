@@ -9,9 +9,9 @@ case "${1:-}" in
 esac
 require_root
 while true; do
-  clear; say "================================"; say " Proxy Manager v$(<"$BASE_DIR/VERSION")"; say "================================"
-  say "1. Xray Reality"; say "2. Clash subscription"; say "3. Mihomo client"; say "4. DNS"; say "5. System optimisation"; say "6. Security"; say "7. Web subscription service"; say "8. Health check"; say "9. View node"; say "10. Update"; say "11. Uninstall"; say "0. Exit"
-  read -r -p "Select: " c
+  clear; say "================================"; say " 代理管理器 Proxy Manager v$(<"$BASE_DIR/VERSION")"; say "================================"
+  say "1. Xray Reality 节点"; say "2. Clash 订阅"; say "3. Mihomo 客户端"; say "4. DNS 管理"; say "5. 系统优化"; say "6. 安全加固"; say "7. Web 订阅服务"; say "8. 健康检查"; say "9. 查看节点信息"; say "10. 更新程序"; say "11. 卸载 Proxy Manager"; say "0. 退出"
+  read -r -p "请选择: " c
   case "$c" in
     1) "$BASE_DIR/modules/xray.sh";;
     2) "$BASE_DIR/modules/subscription.sh";;
@@ -20,8 +20,8 @@ while true; do
     5) "$BASE_DIR/modules/system.sh";;
     6) "$BASE_DIR/modules/security.sh";;
     7) "$BASE_DIR/modules/web.sh";;
-    8) "$BASE_DIR/tests/check.sh"; read -r -p "Press Enter..." _;;
-    9) load_node_data; say "Subscription: ${SUBSCRIPTION_URL:-http://$SERVER/clash/config.yaml}"; say "$VLESS_URI"; read -r -p "Press Enter..." _;;
-    10) "$BASE_DIR/update.sh"; read -r -p "Press Enter..." _;; 11) exec "$BASE_DIR/uninstall.sh";; 0) exit;; *) say "Invalid selection.";;
+    8) "$BASE_DIR/tests/check.sh"; read -r -p "请按回车继续..." _;;
+    9) load_node_data; say "订阅地址: ${SUBSCRIPTION_URL:-http://$SERVER/clash/config.yaml}"; say "$VLESS_URI"; read -r -p "请按回车继续..." _;;
+    10) "$BASE_DIR/update.sh"; read -r -p "请按回车继续..." _;; 11) exec "$BASE_DIR/uninstall.sh";; 0) exit;; *) say "无效选择。";;
   esac
 done

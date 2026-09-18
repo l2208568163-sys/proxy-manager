@@ -32,15 +32,15 @@ EOF
   chmod 0600 "$NODE_FILE"; systemctl enable --now xray
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && ufw allow "$port/tcp" || true
   "$SCRIPT_DIR/subscription.sh" generate
-  say "Xray running. Subscription: http://$server/clash/config.yaml"
+  say "Xray 已启动。订阅地址：http://$server/clash/config.yaml"
 }
 require_root
 while true; do
-  clear; say "===== Xray Reality ====="; say "1. Install or reconfigure"; say "2. Show node"; say "3. Restart"; say "4. Status"; say "5. Remove Xray"; say "0. Back"
-  read -r -p "Select: " c
+  clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "0. 返回"
+  read -r -p "请选择: " c
   case "$c" in
-    1) install_xray; read -r -p "Press Enter..." _;; 2) load_node_data; say "$VLESS_URI"; say "$SUBSCRIPTION_URL"; read -r -p "Press Enter..." _;;
-    3) systemctl restart xray;; 4) systemctl --no-pager status xray || true; read -r -p "Press Enter..." _;;
-    5) confirm "Remove Xray and generated node data?" && { bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge; rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"; };; 0) exit;; *) say "Invalid selection.";;
+    1) install_xray; read -r -p "请按回车继续..." _;; 2) load_node_data; say "$VLESS_URI"; say "$SUBSCRIPTION_URL"; read -r -p "请按回车继续..." _;;
+    3) systemctl restart xray;; 4) systemctl --no-pager status xray || true; read -r -p "请按回车继续..." _;;
+    5) confirm "Remove Xray and generated node data?" && { bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge; rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"; };; 0) exit;; *) say "无效选择。";;
   esac
 done

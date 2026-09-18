@@ -9,20 +9,20 @@ MIHOMO_DIR="${MIHOMO_DIR:-/etc/mihomo}"
 MIHOMO_CONFIG="$MIHOMO_DIR/config.yaml"
 
 say() { printf '%s\n' "$*"; }
-die() { say "Error: $*" >&2; exit 1; }
-require_root() { [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Please run as root."; }
+die() { say "错误: $*" >&2; exit 1; }
+require_root() { [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "请使用 root 权限运行。"; }
 require_command() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 service_is_active() { systemctl is-active --quiet "$1" 2>/dev/null; }
 restart_if_active() { service_is_active "$1" && { systemctl restart "$1"; say "Restarted $1."; }; }
 confirm() { local a; read -r -p "$1 [y/N]: " a; [[ "$a" =~ ^[Yy]([Ee][Ss])?$ ]]; }
 
 load_node_data() {
-  [[ -f "$NODE_FILE" ]] || die "No node information found. Install Xray Reality first."
+  [[ -f "$NODE_FILE" ]] || die "未找到节点信息，请先安装 Xray Reality。"
   # shellcheck disable=SC1090
   source "$NODE_FILE"
   local key
   for key in SERVER UUID PUBLIC_KEY SHORT_ID PORT SNI; do
-    [[ -n "${!key:-}" ]] || die "Node data is incomplete: $key is missing."
+    [[ -n "${!key:-}" ]] || die "节点数据不完整：$key 缺失。"
   done
 }
 
