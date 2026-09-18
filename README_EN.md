@@ -119,6 +119,8 @@ proxy version     # print version
 proxy --help      # help
 ```
 
+> **Uninstall**: `bash uninstall.sh` (keep `data/`) or `bash uninstall.sh --clean` (wipe everything including keys).
+
 ---
 
 ## 📱 Clash Import

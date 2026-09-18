@@ -119,6 +119,8 @@ proxy version     # 输出版本号
 proxy --help      # 帮助
 ```
 
+> **卸载**：`bash uninstall.sh`（普通卸载，保留 `data/`）或 `bash uninstall.sh --clean`（完全清理，含节点密钥）。
+
 ---
 
 ## 📱 Clash 导入
