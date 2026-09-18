@@ -4,12 +4,12 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh
 source "$SCRIPT_DIR/../lib/common.sh"
 SNI="${REALITY_SERVER_NAME:-www.cloudflare.com}"
-key() { awk -F': *' -v n="$1" 'tolower($1)==tolower(n) {print $2; exit}' <<<"$2"; }
+key() { awk -F': *' -v n="$1" 'tolower($0) ~ n {sub(/^[^:]*:[[:space:]]*/, ""); print; exit}' <<<"$2"; }
 install_xray() {
   local port keys private public uuid short server
   port="$(choose_available_port)" || die "Ports 443, 8443, 2053 and 2083 are in use."
   bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
-  uuid="$(xray uuid)"; keys="$(xray x25519)"; private="$(key 'Private key' "$keys")"; public="$(key 'Public key' "$keys")"
+  uuid="$(xray uuid)"; keys="$(xray x25519)"; private="$(key 'private' "$keys")"; public="$(key 'public' "$keys")"
   [[ -n "$uuid" && -n "$private" && -n "$public" ]] || die "Unable to read Xray Reality keys."
   short="$(openssl rand -hex 8)"; server="$(detect_public_ip)" || die "Unable to detect public IPv4."
   install -d -m 0755 "$(dirname "$XRAY_CONFIG")" "$DATA_DIR"
