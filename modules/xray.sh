@@ -1,72 +1,46 @@
-#!/bin/bash
-
-BASE="/opt/proxy-manager"
-DATA="$BASE/data/node.env"
-XRAY_CONFIG="/usr/local/etc/xray/config.json"
-
-install_xray(){
-    echo "Installing Xray Reality..."
-    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
-
-    UUID=$(xray uuid)
-    KEYS=$(xray x25519)
-
-    PRIVATE_KEY=$(echo "$KEYS" | grep '^PrivateKey:' | awk -F': ' '{print $2}')
-    PUBLIC_KEY=$(echo "$KEYS" | grep '^Password (PublicKey):' | awk -F': ' '{print $2}')
-
-    if [ -z "$PUBLIC_KEY" ]; then
-        PUBLIC_KEY=$(echo "$KEYS" | grep '^Password:' | awk -F': ' '{print $2}')
-    fi
-
-    SHORT_ID=$(openssl rand -hex 8)
-    SERVER=$(curl -4 -s https://api.ipify.org)
-
-    mkdir -p /usr/local/etc/xray
-
-    cat > "$XRAY_CONFIG" <<EOF
-{
- "inbounds":[{
-  "port":443,
-  "protocol":"vless",
-  "settings":{"clients":[{"id":"$UUID","flow":"xtls-rprx-vision"}],"decryption":"none"},
-  "streamSettings":{"network":"tcp","security":"reality","realitySettings":{"dest":"www.cloudflare.com:443","serverNames":["www.cloudflare.com"],"privateKey":"$PRIVATE_KEY","shortIds":["$SHORT_ID"]}}
- }],
- "outbounds":[{"protocol":"freedom"}]
-}
+#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/common.sh
+source "$SCRIPT_DIR/../lib/common.sh"
+SNI="${REALITY_SERVER_NAME:-www.cloudflare.com}"
+key() { awk -F': *' -v n="$1" 'tolower($1)==tolower(n) {print $2; exit}' <<<"$2"; }
+install_xray() {
+  local port keys private public uuid short server
+  port="$(choose_available_port)" || die "Ports 443, 8443, 2053 and 2083 are in use."
+  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+  uuid="$(xray uuid)"; keys="$(xray x25519)"; private="$(key 'Private key' "$keys")"; public="$(key 'Public key' "$keys")"
+  [[ -n "$uuid" && -n "$private" && -n "$public" ]] || die "Unable to read Xray Reality keys."
+  short="$(openssl rand -hex 8)"; server="$(detect_public_ip)" || die "Unable to detect public IPv4."
+  install -d -m 0755 "$(dirname "$XRAY_CONFIG")" "$DATA_DIR"
+  cat >"$XRAY_CONFIG" <<EOF
+{"log":{"loglevel":"warning"},"inbounds":[{"listen":"0.0.0.0","port":$port,"protocol":"vless","settings":{"clients":[{"id":"$uuid","flow":"xtls-rprx-vision"}],"decryption":"none"},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"show":false,"dest":"$SNI:443","xver":0,"serverNames":["$SNI"],"privateKey":"$private","shortIds":["$short"]}}}],"outbounds":[{"protocol":"freedom"}]}
 EOF
-
-    mkdir -p "$BASE/data"
-    cat > "$DATA" <<EOF
-SERVER=$SERVER
-UUID=$UUID
-PRIVATE_KEY=$PRIVATE_KEY
-PUBLIC_KEY=$PUBLIC_KEY
-SHORT_ID=$SHORT_ID
-PORT=443
-SNI=www.cloudflare.com
+  xray run -test -c "$XRAY_CONFIG" >/dev/null
+  umask 077; cat >"$NODE_FILE" <<EOF
+SERVER=$server
+PORT=$port
+UUID=$uuid
+PRIVATE_KEY=$private
+PUBLIC_KEY=$public
+SHORT_ID=$short
+SNI=$SNI
+NODE_NAME=Reality-$server
+SUBSCRIPTION_URL=http://$server/clash/config.yaml
+VLESS_URI="vless://$uuid@$server:$port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public&sid=$short&type=tcp#Reality-$server"
 EOF
-
-    systemctl enable xray
-    systemctl restart xray
-
-    echo "Xray Reality installed"
+  chmod 0600 "$NODE_FILE"; systemctl enable --now xray
+  command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && ufw allow "$port/tcp" || true
+  "$SCRIPT_DIR/subscription.sh" generate
+  say "Xray running. Subscription: http://$server/clash/config.yaml"
 }
-
-menu(){
+require_root
 while true; do
-clear
-echo "1.Install Xray"
-echo "2.Restart Xray"
-echo "3.Status"
-echo "0.Back"
-read -p "Choose:" C
-case $C in
-1) install_xray;;
-2) systemctl restart xray;;
-3) systemctl status xray;;
-0) exit;;
-esac
+  clear; say "===== Xray Reality ====="; say "1. Install or reconfigure"; say "2. Show node"; say "3. Restart"; say "4. Status"; say "5. Remove Xray"; say "0. Back"
+  read -r -p "Select: " c
+  case "$c" in
+    1) install_xray; read -r -p "Press Enter..." _;; 2) load_node_data; say "$VLESS_URI"; say "$SUBSCRIPTION_URL"; read -r -p "Press Enter..." _;;
+    3) systemctl restart xray;; 4) systemctl --no-pager status xray || true; read -r -p "Press Enter..." _;;
+    5) confirm "Remove Xray and generated node data?" && { bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge; rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"; };; 0) exit;; *) say "Invalid selection.";;
+  esac
 done
-}
-
-menu
