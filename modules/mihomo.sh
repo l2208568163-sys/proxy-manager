@@ -22,16 +22,16 @@ AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
 [Install]
 WantedBy=multi-user.target
 EOF
-  systemctl daemon-reload; say "Mihomo installed. Import a subscription before starting it."
+  systemctl daemon-reload; say "Mihomo 已安装。启动前请先导入订阅。"
 }
 import_config() {
-  local url tmp; read -r -p "Mihomo subscription URL: " url; [[ "$url" =~ ^https?:// ]] || die "URL must begin with http:// or https://"
+  local url tmp; read -r -p "请输入 Mihomo 订阅 URL: " url; [[ "$url" =~ ^https?:// ]] || die "订阅地址必须以 http:// 或 https:// 开头"
   tmp="$(mktemp)"; trap 'rm -f "$tmp"' RETURN; curl -fsSL --max-time 30 "$url" -o "$tmp"; mihomo -t -f "$tmp" >/dev/null
-  install -d -m 0755 "$MIHOMO_DIR"; install -m 0600 "$tmp" "$MIHOMO_CONFIG"; systemctl enable --now mihomo; say "Mihomo started."
+  install -d -m 0755 "$MIHOMO_DIR"; install -m 0600 "$tmp" "$MIHOMO_CONFIG"; systemctl enable --now mihomo; say "Mihomo 已启动。"
 }
 enable_tun() {
   [[ -f "$MIHOMO_CONFIG" ]] || die "Import a subscription before enabling TUN."
-  grep -Eq '^tun:' "$MIHOMO_CONFIG" && die "This profile already defines TUN. Edit it directly instead of adding a second TUN section."
+  grep -Eq '^tun:' "$MIHOMO_CONFIG" && die "该配置已定义 TUN，请直接编辑原配置，不要重复添加 TUN 段。"
   cat >>"$MIHOMO_CONFIG" <<'EOF'
 
 tun:
@@ -46,7 +46,7 @@ tun:
 EOF
   mihomo -t -f "$MIHOMO_CONFIG" >/dev/null
   systemctl restart mihomo
-  say "TUN mode enabled. It changes the host routing table; disable it by restoring the subscription profile if required."
+  say "TUN 模式已启用。它会修改主机路由表；如需关闭，请恢复原订阅配置。"
 }
 require_root
-while true; do clear; say "===== Mihomo Client ====="; say "1. Install or update core"; say "2. Import subscription and start"; say "3. Enable TUN mode for imported profile"; say "4. Restart"; say "5. Status"; say "0. Back"; read -r -p "Select: " c; case "$c" in 1) install_mihomo; read -r -p "Press Enter..." _;;2) require_command mihomo; import_config; read -r -p "Press Enter..." _;;3) require_command mihomo; enable_tun; read -r -p "Press Enter..." _;;4) systemctl restart mihomo;;5) systemctl --no-pager status mihomo || true; read -r -p "Press Enter..." _;;0) exit;;*) say "Invalid selection.";;esac; done
+while true; do clear; say "===== Mihomo 客户端 ====="; say "1. 安装或更新核心"; say "2. 导入订阅并启动"; say "3. 为已导入配置启用 TUN 模式"; say "4. 重启"; say "5. 状态"; say "0. 返回"; read -r -p "请选择: " c; case "$c" in 1) install_mihomo; read -r -p "请按回车继续..." _;;2) require_command mihomo; import_config; read -r -p "请按回车继续..." _;;3) require_command mihomo; enable_tun; read -r -p "请按回车继续..." _;;4) systemctl restart mihomo;;5) systemctl --no-pager status mihomo || true; read -r -p "请按回车继续..." _;;0) exit;;*) say "无效选择。";;esac; done

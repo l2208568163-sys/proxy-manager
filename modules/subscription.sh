@@ -42,4 +42,4 @@ EOF
 }
 case "${1:-}" in generate) require_root; generate; exit;; show) load_node_data; say "$SUBSCRIPTION_URL"; exit;; "") ;; *) die "Usage: subscription.sh [generate|show]";; esac
 require_root
-while true; do clear; say "===== Clash Subscription ====="; say "1. Generate config"; say "2. Show URL"; say "0. Back"; read -r -p "Select: " c; case "$c" in 1) generate; read -r -p "Press Enter..." _;;2) load_node_data; say "$SUBSCRIPTION_URL"; read -r -p "Press Enter..." _;;0) exit;;*) say "Invalid selection.";;esac; done
+while true; do clear; say "===== Clash 订阅 ====="; say "1. 生成配置"; say "2. 显示订阅地址"; say "0. 返回"; read -r -p "请选择: " c; case "$c" in 1) generate; read -r -p "请按回车继续..." _;;2) load_node_data; say "$SUBSCRIPTION_URL"; read -r -p "请按回车继续..." _;;0) exit;;*) say "无效选择。";;esac; done
