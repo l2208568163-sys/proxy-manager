@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Proxy Manager v3.2.3 Web 管理面板 (FastAPI)。
+"""Proxy Manager v3.2.5 Web 管理面板 (FastAPI)。
 
 功能：登录认证、Xray/Mihomo/AdGuardHome 状态与资源监控、服务重启、日志查看、
 Clash 订阅一键复制、订阅二维码。路径基于本文件位置自动推导，部署位置无关。
@@ -73,7 +73,7 @@ def human(n: float) -> str:
 async def login_page(request: Request):
     if auth.check_auth(request):
         return RedirectResponse("/")
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @app.post("/login")
@@ -83,7 +83,7 @@ async def login_submit(request: Request, username: str = Form(...), password: st
         resp = RedirectResponse("/", status_code=303)
         resp.set_cookie("session", token, httponly=True, samesite="lax")
         return resp
-    return templates.TemplateResponse("login.html", {"request": request, "error": "用户名或密码错误"}, status_code=401)
+    return templates.TemplateResponse(request, "login.html", {"error": "用户名或密码错误"}, status_code=401)
 
 
 @app.get("/logout")
@@ -108,9 +108,9 @@ async def index(request: Request):
     sent, recv = net_stats()
     qr = qrgen.data_uri(clash) if clash != "-" else None
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "xray": status_label(service_status("xray")),
             "mihomo": status_label(service_status("mihomo")),
             "dns": status_label(service_status("AdGuardHome")),
