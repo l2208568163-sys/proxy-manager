@@ -34,10 +34,17 @@ proxies:
     flow: xtls-rprx-vision
     servername: "$SNI"
     client-fingerprint: chrome
-    reality-opts: {public-key: "$PUBLIC_KEY", short-id: "$SHORT_ID"}
+    reality-opts:
+      public-key: "$PUBLIC_KEY"
+      short-id: "$SHORT_ID"
 proxy-groups:
-  - {name: Proxy, type: select, proxies: ["$NODE_NAME", DIRECT]}
-rules: [MATCH,Proxy]
+  - name: Proxy
+    type: select
+    proxies:
+      - "$NODE_NAME"
+      - DIRECT
+rules:
+  - MATCH,Proxy
 EOF
   chmod 0644 "$WEB_ROOT/config.yaml"
   # 自检：历史问题为 nginx 未启动导致订阅空/不可用
