@@ -30,10 +30,19 @@ NODE_NAME=Reality-$server
 SUBSCRIPTION_URL=http://$server/clash/config.yaml
 VLESS_URI="vless://$uuid@$server:$port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public&sid=$short&type=tcp#Reality-$server"
 EOF
-  chmod 0600 "$NODE_FILE"; systemctl enable --now xray
+  chmod 0600 "$NODE_FILE"
+  systemctl enable --now xray
+  # 校验端口是否真的监听：Xray 报 running 但未绑定端口是常见"参数对却连不上"陷阱
+  if ! wait_for_listen "$port"; then
+    say "⚠ 警告: Xray 未在 $port 端口监听，正在排查..."
+    ss -lntp 2>/dev/null | grep -w "$port" || say "（当前无任何进程监听 $port）"
+    say "--- 最近日志 ---"; journalctl -u xray -n 20 --no-pager 2>/dev/null || true
+    say "--- 实际启动命令 ---"; systemctl show xray -p ExecStart 2>/dev/null || true
+    die "Xray 未监听 $port。请检查上方日志（常见原因：端口被占用 / systemd 单元 ExecStart 被覆写 / 配置未加载）。"
+  fi
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && ufw allow "$port/tcp" || true
   "$SCRIPT_DIR/subscription.sh" generate
-  say "Xray 已启动。订阅地址：http://$server/clash/config.yaml"
+  say "Xray 已启动并在 $port 监听。订阅地址：http://$server/clash/config.yaml"
 }
 require_root
 while true; do

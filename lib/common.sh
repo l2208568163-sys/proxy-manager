@@ -28,6 +28,8 @@ load_node_data() {
 
 port_in_use() { ss -ltn 2>/dev/null | awk -v p="$1" '$4 ~ (":" p "$") { found=1 } END { exit !found }'; }
 choose_available_port() { local p; for p in 443 8443 2053 2083; do port_in_use "$p" || { echo "$p"; return; }; done; return 1; }
+# 等待端口进入监听，默认最多 5 秒（每 0.5s 探一次）；成功返回 0
+wait_for_listen() { local p="$1" tries="${2:-10}" i=0; while (( i < tries )); do port_in_use "$p" && return 0; sleep 0.5; i=$((i+1)); done; return 1; }
 detect_public_ip() {
   local url ip
   for url in https://api.ipify.org https://ifconfig.me/ip https://ipv4.icanhazip.com; do
