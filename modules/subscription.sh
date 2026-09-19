@@ -17,10 +17,18 @@ tcp-concurrent: true
 packet-encoding: xudp
 dns:
   enable: true
-  listen: 127.0.0.1:1053
+  ipv6: false
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  nameserver: [https://1.1.1.1/dns-query, https://dns.google/dns-query]
+  listen: 127.0.0.1:1053
+  nameserver:
+    - https://1.1.1.1/dns-query
+    - https://8.8.8.8/dns-query
+  fallback:
+    - https://dns.google/dns-query
+    - https://1.0.0.1/dns-query
+  proxy-server-nameserver:
+    - https://1.1.1.1/dns-query
 proxies:
   - name: "$NODE_NAME"
     type: vless
