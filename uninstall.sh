@@ -78,6 +78,11 @@ rm -rf /opt/AdGuardHome /etc/AdGuardHome
 info "6/11" "删除 Nginx 订阅配置"
 rm -f /etc/nginx/sites-enabled/proxy-manager.conf \
       /etc/nginx/sites-available/proxy-manager.conf
+# proxy-manager.conf 曾接管 :80 default_server，这里恢复发行版默认站点
+if [[ -f /etc/nginx/sites-available/default && -d /etc/nginx/sites-enabled \
+      && ! -e /etc/nginx/sites-enabled/default && ! -L /etc/nginx/sites-enabled/default ]]; then
+  ln -sfn /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+fi
 rm -rf /var/www/html/clash
 nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || true
 

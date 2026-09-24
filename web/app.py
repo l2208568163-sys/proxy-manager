@@ -106,11 +106,26 @@ async def login_page(request: Request):
 
 @app.post("/login")
 async def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
+    ip = auth.client_ip(request)
+    # 登录失败限速：超过阈值后一律 429，即使密码正确也不放行（防在线爆破）
+    if auth.is_locked(ip):
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {
+                "error": "失败次数过多，IP 已被临时锁定，请约 15 分钟后再试。",
+                "no_creds": not auth.creds_exist(),
+                "version": APP_VERSION,
+            },
+            status_code=429,
+        )
     if auth.login(username, password):
+        auth.record_success(ip)
         token = auth.create_session()
         resp = RedirectResponse("/", status_code=303)
         resp.set_cookie("session", token, httponly=True, samesite="lax")
         return resp
+    auth.record_failure(ip)
     if not auth.creds_exist():
         error = "未检测到 data/web.env，登录已被拒绝。请在服务器运行 modules/webpanel.sh reset 生成随机口令。"
     else:

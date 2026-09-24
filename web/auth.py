@@ -9,12 +9,42 @@ modules/webpanel.sh reset 生成随机口令。
 """
 import os
 import secrets
+import time
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB_ENV = os.path.join(BASE_DIR, "data", "web.env")
 
 # 进程内会话令牌集合（单进程 uvicorn 足够；多 worker 需换外部存储）
 SESSIONS = set()
+
+# 登录失败限速（进程内）：同一来源 IP 在窗口期内失败达阈值后锁定，
+# 防在线爆破。单进程 uvicorn 下事件循环串行执行，无并发问题；
+# 重启面板自动清零。极端情况下大量不同 IP 可能使字典变大，设上限兜底。
+_MAX_FAILS = 5
+_WINDOW_SECONDS = 900  # 15 分钟
+_MAX_TRACKED_IPS = 10000
+_FAILURES: dict[str, list[float]] = {}
+
+
+def is_locked(ip: str) -> bool:
+    now = time.time()
+    recent = [t for t in _FAILURES.get(ip, []) if now - t < _WINDOW_SECONDS]
+    _FAILURES[ip] = recent
+    return len(recent) >= _MAX_FAILS
+
+
+def record_failure(ip: str) -> None:
+    if len(_FAILURES) > _MAX_TRACKED_IPS:
+        _FAILURES.clear()
+    _FAILURES.setdefault(ip, []).append(time.time())
+
+
+def record_success(ip: str) -> None:
+    _FAILURES.pop(ip, None)
+
+
+def client_ip(request) -> str:
+    return request.client.host if request.client else "unknown"
 
 
 def creds_exist() -> bool:
