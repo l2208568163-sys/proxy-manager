@@ -76,12 +76,14 @@ if [[ "$UPDATE_SYS" == false && -t 0 ]]; then
 fi
 
 ####################################################
-# Update System (optional)
+# Update apt index (always) / Upgrade system (optional)
 ####################################################
 export DEBIAN_FRONTEND=noninteractive
+# 无条件刷新索引：全新机器列表为空时，跳过这步 apt-get install 会直接失败
+info "更新软件源索引"
+apt-get update
 if [[ "$UPDATE_SYS" == true ]]; then
-  info "更新系统软件源"
-  apt-get update
+  info "升级系统软件包"
   apt-get upgrade -y
 fi
 

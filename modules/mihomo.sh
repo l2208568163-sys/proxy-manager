@@ -3,11 +3,31 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 install_mihomo() {
-  local platform asset tmp
+  local platform asset json tmp bin
   case "$(uname -m)" in x86_64|amd64) platform=amd64;; aarch64|arm64) platform=arm64;; armv7l|armv7) platform=armv7;; *) die "Unsupported CPU architecture.";; esac
-  asset="$(curl -fsSL https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r --arg p "mihomo-linux-$platform" '.assets[] | select(.name | startswith($p)) | select(.name | endswith(".gz")) | .browser_download_url' | head -n1)"
-  [[ -n "$asset" && "$asset" != null ]] || die "No Mihomo release asset was found."
-  tmp="$(mktemp)"; trap 'rm -f "$tmp"' RETURN; curl -fL "$asset" | gzip -dc >"$tmp"; install -m 0755 "$tmp" /usr/local/bin/mihomo
+  # GitHub 匿名 API 每小时限 60 次（NAT 共享出口 IP 的机器易触顶）；设置 GITHUB_TOKEN 可提升限额
+  local -a auth_args=()
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then auth_args=(-H "Authorization: Bearer $GITHUB_TOKEN"); fi
+  json="$(curl -fsSL --max-time 30 "${auth_args[@]}" https://api.github.com/repos/MetaCubeX/mihomo/releases/latest)" \
+    || die "获取 mihomo 版本信息失败（GitHub API 可能限流或网络不通；可设置 GITHUB_TOKEN 后重试）。"
+  # 显式选版，不依赖 API 返回顺序：
+  #   1) 标准构建 mihomo-linux-<平台>-v<版本>.gz（跳过需要较新 CPU 的 -v3- 与 -compatible- 变体）
+  #   2) 回退 -compatible- 构建（兼容老 CPU）
+  asset="$(jq -r --arg p "mihomo-linux-$platform" '
+    ([.assets[].browser_download_url
+      | select(test("/" + $p + "-v[0-9][0-9.]*\\.gz$"))][0]
+     // ([.assets[].browser_download_url
+      | select(test("/" + $p + "-compatible-v[0-9][0-9.]*\\.gz$"))][0]
+     // ""))' <<<"$json")"
+  [[ -n "$asset" ]] || die "未在最新 Release 中找到适用于 $platform 的 mihomo 下载项。"
+  tmp="$(mktemp)"; trap 'rm -f "$tmp" ${bin:+"$bin"}' RETURN
+  curl -fL --max-time 300 "$asset" -o "$tmp" || die "下载 mihomo 失败：$asset"
+  # 完整性自检：gzip 结构校验 + 安装后实际运行一次
+  gzip -t "$tmp" 2>/dev/null || die "下载的 mihomo 压缩包损坏（gzip 校验失败），请重试。"
+  bin="$(mktemp)"; gzip -dc "$tmp" >"$bin"
+  install -m 0755 "$bin" /usr/local/bin/mihomo
+  mihomo -v >/dev/null 2>&1 || die "mihomo 二进制无法运行（构建可能与本机 CPU 不兼容）。"
+  say "已安装: $(mihomo -v 2>&1 | head -n1)"
   install -d -m 0755 "$MIHOMO_DIR"
   cat >/etc/systemd/system/mihomo.service <<'EOF'
 [Unit]
