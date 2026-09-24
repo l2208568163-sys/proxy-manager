@@ -8,7 +8,8 @@
 
 set -Eeuo pipefail
 
-VERSION="3.2.2"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+VERSION="$(<"$SCRIPT_DIR/VERSION")"
 INSTALL_DIR="${INSTALL_DIR:-/opt/proxy-manager}"
 REPO_URL="${REPO_URL:-https://github.com/l2208568163-sys/proxy-manager.git}"
 
@@ -157,7 +158,8 @@ find "$INSTALL_DIR" -type f -name '*.sh' -exec chmod 0755 {} +
 # Firewall
 ####################################################
 info "配置防火墙放行规则"
-for p in 22 80 443 8080; do
+# 8080（Web 面板）不放行：面板默认仅监听 127.0.0.1，公网访问需在面板菜单显式开启
+for p in 22 80 443; do
   ufw allow "${p}/tcp" >/dev/null 2>&1 || true
 done
 
@@ -182,10 +184,14 @@ if [[ -f "$INSTALL_DIR/data/web.env" ]]; then
   source "$INSTALL_DIR/data/web.env"
   IP="$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')"
   echo
-  echo "Web 控制台: http://$IP:8080"
-  echo "账号:       ${WEB_USER:-admin}"
-  echo "密码:       ${WEB_PASS:-<见 data/web.env>}"
-  echo "（公网暴露建议加反向代理或仅本地/SSH 隧道访问）"
+  echo "账号: ${WEB_USER:-admin}（密码见 $INSTALL_DIR/data/web.env）"
+  if [[ "${WEB_BIND:-127.0.0.1}" == "0.0.0.0" ]]; then
+    echo "Web 控制台: http://$IP:8080（公网暴露中，建议加反向代理或仅 SSH 隧道访问）"
+  else
+    echo "Web 控制台: 默认仅本机监听 127.0.0.1:8080"
+    echo "  访问方式: ssh -L 8080:127.0.0.1:8080 用户@$IP 后打开 http://localhost:8080"
+    echo "  公网访问: proxy → 12 → 7 开启『公网访问开关』"
+  fi
 fi
 echo
 echo "下一步: 运行 proxy 打开主菜单；选 1 生成 Xray 节点、选 2 生成 Clash 订阅、选 12 管理 Web 面板"

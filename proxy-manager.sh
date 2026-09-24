@@ -24,7 +24,7 @@ while true; do
     6) "$BASE_DIR/modules/security.sh";;
     7) "$BASE_DIR/modules/web.sh";;
     8) "$BASE_DIR/tests/check.sh"; read -r -p "请按回车继续..." _;;
-    9) load_node_data; say "订阅地址: ${SUBSCRIPTION_URL:-http://$SERVER/clash/config.yaml}"; say "$VLESS_URI"; read -r -p "请按回车继续..." _;;
+    9) load_node_data; say "订阅地址: ${SUBSCRIPTION_URL:-（尚未生成，请运行主菜单 2 重新生成订阅）}"; say "$VLESS_URI"; read -r -p "请按回车继续..." _;;
     10) "$BASE_DIR/update.sh"; read -r -p "请按回车继续..." _;; 11) exec "$BASE_DIR/uninstall.sh";; 12) "$BASE_DIR/modules/webpanel.sh";; 0) exit;; *) say "无效选择。";;
   esac
 done

@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/l2208568163-sys/proxy-manager"><img src="https://img.shields.io/github/stars/l2208568163-sys/proxy-manager" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/l2208568163-sys/proxy-manager" alt="GitHub license"></a>
-  <img src="https://img.shields.io/badge/version-3.2.3-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.2.8-blue" alt="Version">
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 
 ### 🌐 Clash 订阅
 - 兼容 Clash Verge、Clash Meta、Mihomo Party 等客户端
-- 自动生成：`http://服务器IP/clash/config.yaml`
+- 自动生成带**随机令牌**的订阅地址：`http://服务器IP/clash/<令牌>/config.yaml`，路径不可猜测，防止节点凭证被扫段获取
 - 复制 URL 即可导入
 
 ### 🚀 Mihomo
@@ -124,7 +124,7 @@ proxy --help      # 帮助
 ---
 
 ## 📱 Clash 导入
-安装完成后会生成：`http://服务器IP/clash/config.yaml`
+安装完成后会生成带随机令牌的订阅地址（形如 `http://服务器IP/clash/<令牌>/config.yaml`，可在主菜单 9 或 Web 面板查看）：
 
 以 Clash Verge 为例：
 ```
@@ -134,11 +134,17 @@ Profiles → New Profile → URL → 粘贴订阅地址
 ---
 
 ## 🖥 Web 管理面板
-访问：`http://服务器IP:8080`（首次安装由 `主菜单 → 12. Web 管理面板 → 1` 生成随机密码并打印）
+面板**默认只监听 `127.0.0.1:8080`**，不直接暴露公网。首次安装（`主菜单 → 12. Web 管理面板 → 1`）会生成随机密码并打印。
+
+访问方式（SSH 隧道，推荐）：
+```bash
+ssh -L 8080:127.0.0.1:8080 用户@服务器IP
+# 然后本机浏览器打开 http://localhost:8080
+```
+
+如需公网访问：`proxy` → 12 → 7 开启「公网访问开关」（绑 `0.0.0.0` 并放行 8080）；建议用完即关，或前置带 TLS 的反向代理。
 
 功能：服务状态、资源监控、在线重启、日志查看、订阅复制、节点二维码。
-
-> ⚠ 即便有登录认证，公网裸奔 8080 仍有风险；建议用 SSH 隧道（`ssh -L 8080:127.0.0.1:8080 用户@IP` 后访问 `localhost:8080`）或前置带 TLS 的反向代理。
 
 ---
 
@@ -177,6 +183,7 @@ Proxy-Manager
 
 ## 🔐 安全说明
 - **不要上传** `data/node.env` 和 `data/web.env`：前者含 `PRIVATE_KEY` / `UUID`，后者含后台密码。
+- **订阅地址含随机令牌，等同节点凭证**，请勿公开分享；泄露后可重新生成订阅并更换 `SUB_TOKEN`。
 - 本仓库 `.gitignore` 已默认忽略 `data/web.env`、`data/node.env`、`web/venv/`、`__pycache__/`。
 - 使用 SSH 密钥登录，仅开放必要端口，定期更新系统 / Xray / Mihomo / AdGuard Home。
 - 本项目不提供匿名性或绕过当地法律的保证；请遵守所在地法律与服务商规则。
@@ -189,6 +196,7 @@ Proxy-Manager
 - [x] **v3.2.1** 登录认证 / 服务重启与日志 / 订阅复制 / 节点二维码
 - [x] **v3.2.2** Bug 修复：install.sh 补全 Python 依赖 / proxy 命令动态路径 / Clash 订阅 xudp / Reality dest 可配置
 - [x] **v3.2.3** 引导层：install.sh 自动安装 Web 面板并打印访问信息 / webpanel.sh 增加启动·停止·地址·凭据·重置密码管理项 / 主菜单 Web 入口标星
+- [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [ ] **v3.3** 多节点管理 / 流量统计 / API 管理
 
 ---
