@@ -3,69 +3,103 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Proxy Manager</title>
+  <title>Proxy Manager · 控制台</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="box">
-    <h1>Proxy Manager v3.2.7</h1>
-    <p class="topbar"><a href="/logout">退出登录</a></p>
+<header class="top">
+  <div class="brand"><span class="logo">⚡</span><span>Proxy Manager</span><span class="ver">v{{ version }}</span></div>
+  <a class="btn ghost sm" href="/logout">退出登录</a>
+</header>
 
-    <div class="card">
+<main class="wrap">
+  <div class="grid">
+
+    <section class="card">
       <h2>服务状态</h2>
-      <p class="row"><span>Xray</span><b>{{ xray }}</b></p>
-      <p class="row"><span>Mihomo</span><b>{{ mihomo }}</b></p>
-      <p class="row"><span>AdGuard DNS</span><b>{{ dns }}</b></p>
-    </div>
+      {% for s in services %}
+      <div class="svc">
+        <div class="svc-name">
+          <span class="dot {{ 'ok' if s.state == 'active' else 'bad' }}"></span>
+          <span>{{ s.label }}</span>
+          <small>{{ '运行中' if s.state == 'active' else '未运行' }}</small>
+        </div>
+        <div class="svc-actions">
+          <form method="post" action="/restart/{{ s.key }}" onsubmit="return confirm('确认重启 {{ s.label }} 吗？')">
+            <button class="btn sm" type="submit">重启</button>
+          </form>
+          <a class="btn sm ghost" href="/logs/{{ s.key }}">日志</a>
+        </div>
+      </div>
+      {% endfor %}
+    </section>
 
-    <div class="card">
-      <h2>服务器</h2>
-      <p class="row"><span>IP</span><b>{{ server }}</b></p>
-      <p class="row"><span>CPU</span><b>{{ cpu }} %</b></p>
-      <p class="row"><span>Memory</span><b>{{ memory }} %</b></p>
-      <p class="row"><span>Network ↓/↑</span><b>{{ net_recv }} / {{ net_sent }}</b></p>
-    </div>
+    <section class="card">
+      <h2>资源监控</h2>
+      <div class="meter">
+        <div class="meter-head"><span>CPU</span><b>{{ cpu|round(1) }}%</b></div>
+        <div class="bar"><i style="width: {{ cpu }}%"></i></div>
+      </div>
+      <div class="meter">
+        <div class="meter-head"><span>内存</span><b>{{ memory|round(1) }}%</b></div>
+        <div class="bar"><i style="width: {{ memory }}%"></i></div>
+      </div>
+      <div class="kv"><span>网络 ↓ / ↑</span><b class="mono">{{ net_recv }} / {{ net_sent }}</b></div>
+    </section>
 
-    <div class="card">
+    <section class="card">
       <h2>Reality 节点</h2>
-      <p class="row"><span>Server</span><b>{{ server }}</b></p>
-      <p class="row"><span>端口</span><b>{{ port }} TCP</b></p>
-    </div>
+      <div class="kv"><span>节点</span><b>{{ node_name }}</b></div>
+      <div class="kv"><span>服务器</span><b class="mono">{{ server }}</b></div>
+      <div class="kv"><span>端口</span><b class="mono">{{ port }} TCP</b></div>
+      <div class="kv"><span>SNI</span><b class="mono">{{ sni }}</b></div>
+      <div class="kv"><span>UUID</span><b class="mono break">{{ uuid }}</b></div>
+    </section>
 
-    <div class="card">
+    <section class="card wide">
       <h2>Clash 订阅</h2>
-      <p class="link" id="sub">{{ clash }}</p>
-      <button onclick="copySub()">复制订阅</button>
-    </div>
-
-    <div class="card">
-      <h2>节点二维码</h2>
-      {% if qr %}
+      {% if sub_ready %}
+      <div class="subline">
+        <code id="sub">{{ clash }}</code>
+        <button class="btn primary" type="button" onclick="copySub()">复制</button>
+      </div>
+      <div class="qrwrap">
         <img class="qr" src="{{ qr }}" alt="订阅二维码">
-        <p class="hint">手机 Clash 扫码导入订阅</p>
+        <p class="hint">手机 Clash 客户端扫码导入 · 地址含随机令牌等同节点凭证，请勿外传</p>
+      </div>
       {% else %}
-        <p class="hint">二维码不可用（未安装 qrcode 或节点未配置）</p>
+      <p class="hint">订阅尚未生成或缺少随机令牌。请在服务器运行 <code>proxy</code> → 主菜单 2 重新生成订阅。</p>
       {% endif %}
-    </div>
+    </section>
 
-    <div class="card">
-      <h2>服务控制</h2>
-      <p><a class="btn" href="/restart/xray">重启 Xray</a> <a class="btn" href="/logs/xray">Xray 日志</a></p>
-      <p><a class="btn" href="/restart/mihomo">重启 Mihomo</a> <a class="btn" href="/logs/mihomo">Mihomo 日志</a></p>
-    </div>
   </div>
+</main>
 
-  <script>
-    function copySub() {
-      var t = document.getElementById("sub").innerText.trim();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(t).then(function () { alert("复制成功"); });
-      } else {
-        var ta = document.createElement("textarea");
-        ta.value = t; document.body.appendChild(ta); ta.select();
-        document.execCommand("copy"); document.body.removeChild(ta); alert("复制成功");
-      }
+<div class="toast" id="toast" role="status"></div>
+<script>
+  function toast(t) {
+    var el = document.getElementById('toast');
+    el.textContent = t;
+    el.classList.add('show');
+    setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+  function legacyCopy(t) {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); }
+    catch (e) { toast('复制失败，请手动复制'); }
+    document.body.removeChild(ta);
+  }
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { toast('已复制到剪贴板'); }, function () { legacyCopy(t); });
+    } else {
+      legacyCopy(t);
     }
-  </script>
+  }
+  function copySub() { copyText(document.getElementById('sub').innerText.trim()); }
+</script>
 </body>
 </html>

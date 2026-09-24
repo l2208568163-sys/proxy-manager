@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/l2208568163-sys/proxy-manager"><img src="https://img.shields.io/github/stars/l2208568163-sys/proxy-manager" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/l2208568163-sys/proxy-manager" alt="GitHub license"></a>
-  <img src="https://img.shields.io/badge/version-3.2.3-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.2.8-blue" alt="Version">
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ It helps you deploy:
 
 ### 🌐 Clash Subscription
 - Compatible with Clash Verge, Clash Meta, Mihomo Party, etc.
-- Auto-generates: `http://SERVER_IP/clash/config.yaml`
+- Auto-generates a subscription URL with a **random token**: `http://SERVER_IP/clash/<token>/config.yaml` — the path is unguessable, keeping node credentials safe from scanners
 - Paste the URL to import
 
 ### 🚀 Mihomo
@@ -124,18 +124,24 @@ proxy --help      # help
 ---
 
 ## 📱 Clash Import
-After installation you get: `http://SERVER_IP/clash/config.yaml`
+After installation you get a subscription URL with a random token (like `http://SERVER_IP/clash/<token>/config.yaml`; view it in menu 9 or the web dashboard):
 
 In Clash Verge: `Profiles → New Profile → URL → paste the subscription URL`.
 
 ---
 
 ## 🖥 Web Dashboard
-Visit: `http://SERVER_IP:8080` (the random password is generated and printed on first setup via `Menu → 12. Web Dashboard → 1`).
+The dashboard **binds to `127.0.0.1:8080` only** by default — it is not exposed publicly. The random password is generated and printed on first setup (`Menu → 12. Web Dashboard → 1`).
+
+Access via SSH tunnel (recommended):
+```bash
+ssh -L 8080:127.0.0.1:8080 user@SERVER_IP
+# then open http://localhost:8080
+```
+
+To expose it publicly: `proxy` → 12 → 7 toggles "public access" (binds `0.0.0.0` and opens 8080). Turn it off when not needed, or put a TLS-terminating reverse proxy in front.
 
 Features: service status, resource monitoring, online restart, log viewing, subscription copy, node QR code.
-
-> ⚠ Even with login auth, exposing 8080 publicly is risky. Prefer an SSH tunnel (`ssh -L 8080:127.0.0.1:8080 user@IP`, then open `localhost:8080`) or a TLS-terminating reverse proxy.
 
 ---
 
@@ -174,6 +180,7 @@ Proxy-Manager
 
 ## 🔐 Security
 - **Never upload** `data/node.env` and `data/web.env`: the former holds `PRIVATE_KEY` / `UUID`, the latter holds the dashboard password.
+- **The subscription URL contains a random token and is a node credential** — do not share it publicly. If leaked, regenerate the subscription and rotate `SUB_TOKEN`.
 - This repo's `.gitignore` already excludes `data/web.env`, `data/node.env`, `web/venv/`, `__pycache__/`.
 - Use SSH keys, open only required ports, and keep system / Xray / Mihomo / AdGuard Home updated.
 - This project gives no guarantee of anonymity or circumvention of local laws; comply with applicable laws and provider rules.
@@ -186,6 +193,7 @@ Proxy-Manager
 - [x] **v3.2.1** Login auth / restart & logs / subscription copy / node QR code
 - [x] **v3.2.2** Bug fix: install.sh Python deps / dynamic proxy path / Clash xudp / configurable Reality dest
 - [x] **v3.2.3** Guidance layer: install.sh auto-installs Web panel & prints access info / webpanel.sh gains start·stop·address·credentials·reset-password / Web entry starred in CLI menu
+- [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [ ] **v3.3** Multi-node management / traffic stats / API management
 
 ---

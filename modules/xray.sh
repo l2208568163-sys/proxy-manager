@@ -27,7 +27,6 @@ PUBLIC_KEY=$public
 SHORT_ID=$short
 SNI=$SNI
 NODE_NAME=Reality-$server
-SUBSCRIPTION_URL=http://$server/clash/config.yaml
 VLESS_URI="vless://$uuid@$server:$port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public&sid=$short&type=tcp#Reality-$server"
 EOF
   chmod 0600 "$NODE_FILE"
@@ -42,14 +41,14 @@ EOF
   fi
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && ufw allow "$port/tcp" || true
   "$SCRIPT_DIR/subscription.sh" generate
-  say "Xray 已启动并在 $port 监听。订阅地址：http://$server/clash/config.yaml"
+  say "Xray 已启动并在 $port 监听。订阅地址见上方输出（含随机令牌，也可在主菜单 9 查看）。"
 }
 require_root
 while true; do
   clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "0. 返回"
   read -r -p "请选择: " c
   case "$c" in
-    1) install_xray; read -r -p "请按回车继续..." _;; 2) load_node_data; say "$VLESS_URI"; say "$SUBSCRIPTION_URL"; read -r -p "请按回车继续..." _;;
+    1) install_xray; read -r -p "请按回车继续..." _;; 2) load_node_data; say "$VLESS_URI"; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先运行选项 1 或订阅菜单生成。}"; read -r -p "请按回车继续..." _;;
     3) systemctl restart xray;; 4) systemctl --no-pager status xray || true; read -r -p "请按回车继续..." _;;
     5) confirm "Remove Xray and generated node data?" && { bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge; rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"; };; 0) exit;; *) say "无效选择。";;
   esac

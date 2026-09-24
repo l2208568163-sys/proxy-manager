@@ -26,6 +26,16 @@ load_node_data() {
   done
 }
 
+# 在 env 文件中更新或追加 KEY=VALUE（值不含换行/竖线时安全：token 为 hex，URL 无 | 与 &）
+env_upsert() {
+  local f="$1" k="$2" v="$3"
+  [[ -f "$f" ]] || install -m 0600 /dev/null "$f"
+  if grep -q "^${k}=" "$f"; then
+    sed -i "s|^${k}=.*|${k}=${v}|" "$f"
+  else
+    printf '%s=%s\n' "$k" "$v" >>"$f"
+  fi
+}
 port_in_use() { ss -ltn 2>/dev/null | awk -v p="$1" '$4 ~ (":" p "$") { found=1 } END { exit !found }'; }
 choose_available_port() { local p; for p in 443 8443 2053 2083; do port_in_use "$p" || { echo "$p"; return; }; done; return 1; }
 # 等待端口进入监听，默认最多 5 秒（每 0.5s 探一次）；成功返回 0

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proxy Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+<div class="login-wrap">
+  <div class="login-card result-card">
+    <div class="login-logo">{{ '✅' if ok else '⚠️' }}</div>
+    <h1>{{ title }}</h1>
+    <p class="{{ 'result-ok' if ok else 'err' }}">{{ message }}</p>
+    <a class="btn primary full" href="/">返回面板</a>
+  </div>
+</div>
+</body>
+</html>
