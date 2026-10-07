@@ -41,7 +41,8 @@ write_xray_config() {
   local joined; joined="$(IFS=,; echo "${ins[*]}")"
   install -d -m 0755 "$(dirname "$XRAY_CONFIG")"
   printf '{"log":{"loglevel":"warning"},"inbounds":[%s],"outbounds":[{"protocol":"freedom"}]}\n' "$joined" >"$XRAY_CONFIG"
-  xray run -test -c "$XRAY_CONFIG" >/dev/null
+  # 配置校验失败必须显式报错返回（条件上下文里 set -e 不会兜底，静默继续会用坏配置重启）
+  xray run -test -c "$XRAY_CONFIG" >/dev/null || { say "✗ 生成的 Xray 配置未通过校验：$XRAY_CONFIG（可运行 xray run -test -c $XRAY_CONFIG 查看详情）"; return 1; }
 }
 
 # 写入新配置后必须 (re)start，不能只靠 enable --now：服务已在运行时它是 no-op，
@@ -63,7 +64,8 @@ restart_xray_and_wait() {
     say "（Xray 实际监听端口：）"; ss -lntup 2>/dev/null | grep -i xray || say "（ss 未列出 xray，可能未真正启动）"
     say "--- 最近日志 ---"; journalctl -u xray -n 20 --no-pager 2>/dev/null || true
     say "--- 实际启动命令 ---"; systemctl show xray -p ExecStart 2>/dev/null || true
-    die "Xray 未监听 $proto/$port。请检查上方日志（常见原因：端口被占用 / systemd 单元 ExecStart 被覆写 / 配置未加载）。"
+    say "✗ Xray 未监听 $proto/$port（常见原因：端口被占用 / systemd 单元 ExecStart 被覆写 / 配置未加载）。"
+    return 1
   fi
 }
 
@@ -115,12 +117,18 @@ EOF
 
 install_xray() {
   # 主节点（常规端口 443/8443/2053/2083）。重建配置时保留已存在的 WiFi 专属节点 inbound。
+  # 同 install_wifi_node：被菜单以条件上下文调用时 set -e 不生效，失败必须显式 return 1。
   local port keys private public uuid short server
-  ensure_xray
-  port="$(choose_available_port)" || die "Ports 443, 8443, 2053 and 2083 are in use."
-  uuid="$(xray uuid)"; keys="$(xray x25519)"; private="$(key 'private' "$keys")"; public="$(key 'public' "$keys")"
-  [[ -n "$uuid" && -n "$private" && -n "$public" ]] || die "Unable to read Xray Reality keys."
-  short="$(openssl rand -hex 8)"; server="$(detect_public_ip)" || die "Unable to detect public IPv4."
+  say "正在准备 Xray Reality 主节点..."
+  ensure_xray || { say "✗ Xray 安装/检查失败（多为无法访问 GitHub 下载安装脚本）。请检查服务器出网后重试。"; return 1; }
+  command -v xray >/dev/null 2>&1 || { say "✗ 未找到 xray 命令，无法继续。"; return 1; }
+  port="$(choose_available_port)" || { say "✗ 端口 443/8443/2053/2083 均被占用，请释放后重试。"; return 1; }
+  uuid="$(xray uuid)" || { say "✗ 生成 UUID 失败（xray 命令异常）。"; return 1; }
+  keys="$(xray x25519)" || { say "✗ 生成 Reality 密钥失败（xray 命令异常）。"; return 1; }
+  private="$(key 'private' "$keys")"; public="$(key 'public' "$keys")"
+  [[ -n "$uuid" && -n "$private" && -n "$public" ]] || { say "✗ 无法读取 Xray Reality 密钥（x25519 输出异常）。"; return 1; }
+  short="$(openssl rand -hex 8)"
+  server="$(detect_public_ip)" || { say "✗ 无法获取公网 IPv4（api.ipify.org / ifconfig.me / ipv4.icanhazip.com 均不可达）。请检查服务器出网后重试。"; return 1; }
   install -d -m 0755 "$DATA_DIR"
   [[ -f "$NODE_FILE" ]] || install -m 0600 /dev/null "$NODE_FILE"
   env_upsert "$NODE_FILE" SERVER "$server"
@@ -136,19 +144,23 @@ install_xray() {
   chmod 0600 "$NODE_FILE"
   # shellcheck disable=SC1090
   source "$NODE_FILE"
-  write_xray_config
-  restart_xray_and_wait "$port"
+  write_xray_config || { say "✗ Xray 配置写入/校验失败，主节点未生效（详见上方输出）。"; return 1; }
+  restart_xray_and_wait "$port" || return 1
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && ufw allow "$port/tcp" || true
-  "$SCRIPT_DIR/subscription.sh" generate
+  "$SCRIPT_DIR/subscription.sh" generate || say "⚠ 订阅生成失败（不影响节点本体），可稍后在主菜单 2 重新生成。"
   say "Xray 已启动并在 $port 监听。订阅地址见上方输出（含随机令牌，也可在主菜单 7 查看）。"
 }
 
 install_wifi_node() {
   # WiFi web 跳验证：独立的专属节点 —— Vmess + mKCP（UDP）+ DNS 伪装，不覆盖主节点。
   # 热点为把用户跳到 Web 认证页会放行 UDP 53 的 DNS 报文，故走 UDP:53（Reality 是 TCP，过不去）。
+  # 注意：本函数可能被菜单以 `if ! install_wifi_node` 调用（条件上下文会挂起 set -e），
+  # 故每个可能失败的步骤都必须显式 `|| { say ...; return 1; }`，绝不能依赖 set -e 兜底。
   local port="" uuid server domain stale
-  ensure_xray
-  server="$(detect_public_ip)" || die "Unable to detect public IPv4."
+  say "正在准备 WiFi 跳验证节点（Vmess + mKCP，UDP 53）..."
+  ensure_xray || { say "✗ Xray 安装/检查失败（多为无法访问 GitHub 下载安装脚本）。请检查服务器出网后重试。"; return 1; }
+  command -v xray >/dev/null 2>&1 || { say "✗ 未找到 xray 命令，无法继续。请先运行 Xray 菜单 1 安装主节点。"; return 1; }
+  server="$(detect_public_ip)" || { say "✗ 无法获取公网 IPv4（api.ipify.org / ifconfig.me / ipv4.icanhazip.com 均不可达）。请检查服务器出网后重试。"; return 1; }
   if [[ -f "$NODE_FILE" ]]; then source "$NODE_FILE" 2>/dev/null || true; fi
   domain="${WIFI_DOMAIN:-$SNI}"
   # 已存在 WiFi 节点且端口仍在 UDP 监听 → 复用，避免重跑时把 Xray 自己占的 53 误判为“被占用”而漂移
@@ -170,8 +182,8 @@ install_wifi_node() {
   if [[ -z "$port" ]]; then
     port="$(choose_bypass_port)" || die "WiFi 跳验证端口 53/67/68/123 均被占用，请释放后重试。"
   fi
-  uuid="$(xray uuid)"
-  [[ -n "$uuid" ]] || die "无法生成 Vmess UUID。"
+  uuid="$(xray uuid)" || { say "✗ 生成 Vmess UUID 失败（xray 命令异常）。"; return 1; }
+  [[ -n "$uuid" ]] || { say "✗ 生成的 Vmess UUID 为空。"; return 1; }
   install -d -m 0755 "$DATA_DIR"
   [[ -f "$NODE_FILE" ]] || install -m 0600 /dev/null "$NODE_FILE"
   # Vmess 分享链接：vmess://<base64(JSON)>，v2rayN/v2rayNG 可直接导入（net=kcp + type=dns 伪装）
@@ -191,10 +203,10 @@ install_wifi_node() {
   chmod 0600 "$NODE_FILE"
   # shellcheck disable=SC1090
   source "$NODE_FILE"
-  write_xray_config
-  restart_xray_and_wait "$port" udp
+  write_xray_config || { say "✗ Xray 配置写入/校验失败，WiFi 节点未生效（详见上方输出）。"; return 1; }
+  restart_xray_and_wait "$port" udp || return 1
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && { ufw allow "$port/udp"; ufw allow "$port/tcp"; } || true
-  "$SCRIPT_DIR/subscription.sh" generate
+  "$SCRIPT_DIR/subscription.sh" generate || say "⚠ 订阅生成失败（不影响节点本体），可稍后在主菜单 2 重新生成。"
   say "✓ WiFi web 跳验证专属节点已就绪：Vmess + mKCP，监听 UDP $port（伪装 DNS）。"
   say "  独立于主节点（各自 inbound、各自端口），主节点仍监听 ${PORT:-（未配置）}，不受影响。"
   say "  专用节点分享链接（vmess://，用 v2rayN / v2rayNG 导入）："
@@ -211,11 +223,18 @@ install_wifi_node() {
 }
 
 remove_wifi_node() {
-  [[ -f "$NODE_FILE" ]] || die "未找到节点信息，请先安装 Xray Reality。"
+  if [[ ! -f "$NODE_FILE" ]]; then
+    say "未找到节点信息（$NODE_FILE），请先在 Xray 菜单 1 安装。"
+    return 1
+  fi
   # shellcheck disable=SC1090
-  source "$NODE_FILE"
-  [[ "${WIFI:-0}" == "1" ]] || die "当前没有 WiFi 跳验证节点。"
-  confirm "确认移除 WiFi 跳验证专属节点（端口 ${WIFI_PORT:-未知}）？" || { say "已取消。"; return; }
+  source "$NODE_FILE" 2>/dev/null || true
+  if [[ "${WIFI:-0}" != "1" ]]; then
+    say "当前没有 WiFi 跳验证节点（未记录 WIFI=1），无需移除。"
+    say "提示：若你之前用旧版本开通过 WiFi 节点，请先运行本菜单 6 重新生成一次，再回来移除。"
+    return 1
+  fi
+  confirm "确认移除 WiFi 跳验证专属节点（端口 ${WIFI_PORT:-未知}）？" || { say "已取消。"; return 0; }
   local k
   for k in WIFI WIFI_PORT WIFI_UUID WIFI_DOMAIN WIFI_NODE_NAME WIFI_URI; do
     sed -i "/^${k}=/d" "$NODE_FILE"
@@ -223,10 +242,10 @@ remove_wifi_node() {
   # shellcheck disable=SC1090
   source "$NODE_FILE"
   if [[ -n "${UUID:-}" && -n "${PRIVATE_KEY:-}" && -n "${PORT:-}" && -n "${SHORT_ID:-}" ]]; then
-    write_xray_config
+    write_xray_config || { say "✗ 重建主节点配置失败，请运行 xray run -test -c $XRAY_CONFIG 查看详情。"; return 1; }
     if service_is_active xray; then systemctl restart xray; else systemctl start xray; fi
     say "WiFi 跳验证节点已移除，主节点保持不变。"
-    "$SCRIPT_DIR/subscription.sh" generate
+    "$SCRIPT_DIR/subscription.sh" generate || say "⚠ 订阅生成失败，可稍后在主菜单 2 重新生成。"
   else
     systemctl stop xray 2>/dev/null || true
     rm -f "$XRAY_CONFIG"
@@ -239,11 +258,11 @@ while true; do
   clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "6. WiFi web 跳验证（独立节点 · Vmess+mKCP UDP53）"; say "7. 移除 WiFi 跳验证节点"; say "0. 返回"
   read -r -p "请选择: " c
   case "$c" in
-    1) install_xray; read -r -p "请按回车继续..." _;;
-    2) load_node_data; say "${VLESS_URI:-（未配置主节点）}"; if [[ "${WIFI:-0}" == "1" ]]; then say "WiFi 跳验证节点: ${WIFI_URI:-}"; fi; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先运行选项 1 或订阅菜单生成。}"; read -r -p "请按回车继续..." _;;
+    1) if ! install_xray; then say "（主节点未配置完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;;
+    2) if load_node_data; then say "${VLESS_URI:-（未配置主节点）}"; if [[ "${WIFI:-0}" == "1" ]]; then say "WiFi 跳验证节点: ${WIFI_URI:-}"; fi; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先运行选项 1 或订阅菜单生成。}"; fi; read -r -p "请按回车继续..." _;;
     3) systemctl restart xray;; 4) systemctl --no-pager status xray || true; read -r -p "请按回车继续..." _;;
     5) confirm "Remove Xray and generated node data?" && { bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge; rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"; };;
-    6) install_wifi_node; read -r -p "请按回车继续..." _;;
-    7) remove_wifi_node; read -r -p "请按回车继续..." _;; 0) exit;; *) say "无效选择。";;
+    6) if ! install_wifi_node; then say "（WiFi 跳验证节点未配置完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;;
+    7) if ! remove_wifi_node; then say "（移除未完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;; 0) exit;; *) say "无效选择。";;
   esac
 done

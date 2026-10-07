@@ -15,12 +15,17 @@ restart_if_active() { service_is_active "$1" && { systemctl restart "$1"; say "R
 confirm() { local a; read -r -p "$1 [y/N]: " a; [[ "$a" =~ ^[Yy]([Ee][Ss])?$ ]]; }
 
 load_node_data() {
-  [[ -f "$NODE_FILE" ]] || die "未找到节点信息，请先安装 Xray Reality。"
+  # 用 say+return 而非 die：die 是显式 exit，条件上下文（`if ! load_node_data`）也拦不住，
+  # 会连带退出整个程序；return 1 则既能被 set -e 兜底、也能被菜单优雅接住。
+  if [[ ! -f "$NODE_FILE" ]]; then
+    say "未找到节点信息（$NODE_FILE），请先安装 Xray Reality（主菜单 1 → Xray 菜单 1）。"
+    return 1
+  fi
   # shellcheck disable=SC1090
   source "$NODE_FILE"
   local key main_ok=1 wifi_ok=1
   for key in SERVER SNI; do
-    [[ -n "${!key:-}" ]] || die "节点数据不完整：$key 缺失。"
+    [[ -n "${!key:-}" ]] || { say "节点数据不完整：$key 缺失。"; return 1; }
   done
   # 主节点与 WiFi web 跳验证专属节点至少存在其一（WiFi 节点可独立于主节点部署）
   for key in UUID PUBLIC_KEY SHORT_ID PORT; do
@@ -29,7 +34,10 @@ load_node_data() {
   for key in WIFI_UUID WIFI_PORT; do
     [[ -n "${!key:-}" ]] || wifi_ok=0
   done
-  (( main_ok || wifi_ok )) || die "节点数据不完整：主节点与 WiFi 节点信息均缺失。"
+  if (( ! (main_ok || wifi_ok) )); then
+    say "节点数据不完整：主节点与 WiFi 节点信息均缺失。请重新运行 Xray 菜单 1。"
+    return 1
+  fi
 }
 
 # 在 env 文件中更新或追加 KEY=VALUE。

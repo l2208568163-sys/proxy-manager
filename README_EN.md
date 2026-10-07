@@ -93,7 +93,7 @@ proxy
 Main menu:
 ```
 ================================
- Proxy Manager v3.4.1
+ Proxy Manager v3.4.2
 ================================
  1. Xray Reality
  2. Clash Subscription
@@ -176,6 +176,7 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
+- [x] **v3.4.2** **fixed "program quits right after selecting a feature"**: main menu wraps every module with `|| module_failed` so a module error no longer kills the whole program and the error stays on screen; Xray menu 1/6/7, load_node_data, write_xray_config and restart_xray_and_wait now fail with readable errors and graceful returns instead of relying on set -e
 - [x] **v3.4.1** **interactive backup management**: on install, list this run's + leftover backups and let the user pick whether to restore (new `--restore` / `--no-restore`; non-interactive runs auto-restore newest) / at uninstall, ask about leftover backups (delete all / keep all / delete selected numbers); WiFi web-auth bypass switched to Vmess + mKCP (UDP + DNS disguise)
 - [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / **removed Mihomo client module** (modules/mihomo.sh deleted) / **renamed "Web-auth bypass" to "WiFi web-auth bypass" and made it a dedicated node** (own inbound, own keys and port, does not overwrite the main node; can release port 53) / main menu rearranged
 - [ ] Multi-node management / traffic stats / API management

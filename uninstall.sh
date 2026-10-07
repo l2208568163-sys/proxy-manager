@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #################################################
-# Proxy Manager v3.4.1 —— 完整卸载 (Clean Uninstall)
+# Proxy Manager v3.4.2 —— 完整卸载 (Clean Uninstall)
 #
 # 用法:
 #   bash uninstall.sh           普通卸载（保留 data/ 便于重装）
@@ -36,7 +36,7 @@ fi
 
 echo
 echo "==================================="
-echo "  Proxy Manager 完整卸载 v3.4.1"
+echo "  Proxy Manager 完整卸载 v3.4.2"
 echo "==================================="
 warn "模式" "$([ "$CLEAN" -eq 1 ] && echo '完全清理（含 data/ 节点密钥）' || echo '普通卸载（保留 data/ 便于重装）')"
 echo

@@ -94,7 +94,7 @@ proxy
 主菜单：
 ```
 ================================
- 代理管理器 Proxy Manager v3.4.1
+ 代理管理器 Proxy Manager v3.4.2
 ================================
  1. Xray Reality 节点
  2. Clash 订阅
@@ -180,6 +180,7 @@ Proxy-Manager
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
 - [x] **v3.3.0** Web 认证跳过（端口53 + 分片）/ **移除 Web 管理面板**（FastAPI 面板与 modules/webpanel.sh 已删除）/ 文档同步更新
+- [x] **v3.4.2** **修复「选完功能整个程序退出」**：主菜单以 `|| module_failed` 包裹各模块，模块出错不再连带退出、错误信息暂停展示；Xray 菜单 1/6/7、load_node_data、write_xray_config、restart_xray_and_wait 全面改为「可读错误 + 优雅返回」，不再依赖 set -e 兜底
 - [x] **v3.4.1** **备份可交互管理**：安装时列出本次+历史备份由用户选择是否恢复（新增 `--restore` / `--no-restore`，非交互自动恢复最新）/ 卸载收尾询问历史备份「全部删除 / 全部保留 / 按编号删除」；WiFi 跳验证改用 Vmess + mKCP（UDP + DNS 伪装）
 - [x] **v3.4.0** **移除整个 DNS 模块**（AdGuard Home + 系统 DNS 优化，modules/dns.sh 已删除）/ **移除 Mihomo 客户端模块**（modules/mihomo.sh 已删除）/ **“Web 认证跳过”更名为「WiFi web 跳验证」并改为独立专属节点**（独立 inbound、独立密钥与端口，不覆盖主节点；可自动释放 53）/ 主菜单重排
 - [ ] 多节点管理 / 流量统计 / API 管理
