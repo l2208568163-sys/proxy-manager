@@ -12,11 +12,20 @@ ensure_xray() {
     bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 }
 
-# 生成一个 VLESS-Reality inbound 的 JSON 片段（主节点与 WiFi 节点结构一致，仅端口/密钥不同）
+# 主节点 inbound：VLESS + Reality（TCP）
 inbound_json() {
   local port="$1" uuid="$2" private="$3" short="$4"
   printf '{"listen":"0.0.0.0","port":%s,"protocol":"vless","settings":{"clients":[{"id":"%s","flow":"xtls-rprx-vision"}],"decryption":"none"},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"show":false,"dest":"%s","xver":0,"serverNames":["%s"],"privateKey":"%s","shortIds":["%s"]}}}' \
     "$port" "$uuid" "$REALITY_DEST" "$SNI" "$private" "$short"
+}
+
+# WiFi 跳验证 inbound：Vmess + mKCP（UDP）+ DNS 伪装（对齐 3x-ui / 博客方案）。
+# 关键：走 UDP —— 热点为跳转 Web 认证页会放行 UDP 53 的 DNS 报文，Reality(TCP) 过不去、mKCP 能过。
+# 参数与 3x-ui 默认一致：MTU 1350 / TTI 50 / 上下行 20MB/s / buffer 2 / header=dns。
+wifi_inbound_json() {
+  local port="$1" uuid="$2" domain="$3"
+  printf '{"listen":"0.0.0.0","port":%s,"protocol":"vmess","settings":{"clients":[{"id":"%s","alterId":0}]},"streamSettings":{"network":"kcp","security":"none","kcpSettings":{"mtu":1350,"tti":50,"uplinkCapacity":20,"downlinkCapacity":20,"congestion":false,"readBufferSize":2,"writeBufferSize":2,"header":{"type":"dns","domain":"%s"}}}}' \
+    "$port" "$uuid" "$domain"
 }
 
 # 依据 node.env 重建 Xray 配置：主节点与 WiFi 专属节点各自独立 inbound，互不覆盖
@@ -25,8 +34,8 @@ write_xray_config() {
   if [[ -n "${UUID:-}" && -n "${PRIVATE_KEY:-}" && -n "${PORT:-}" && -n "${SHORT_ID:-}" ]]; then
     ins+=("$(inbound_json "$PORT" "$UUID" "$PRIVATE_KEY" "$SHORT_ID")")
   fi
-  if [[ -n "${WIFI_UUID:-}" && -n "${WIFI_PRIVATE_KEY:-}" && -n "${WIFI_PORT:-}" && -n "${WIFI_SHORT_ID:-}" ]]; then
-    ins+=("$(inbound_json "$WIFI_PORT" "$WIFI_UUID" "$WIFI_PRIVATE_KEY" "$WIFI_SHORT_ID")")
+  if [[ -n "${WIFI_UUID:-}" && -n "${WIFI_PORT:-}" ]]; then
+    ins+=("$(wifi_inbound_json "$WIFI_PORT" "$WIFI_UUID" "${WIFI_DOMAIN:-$SNI}")")
   fi
   ((${#ins[@]})) || die "没有可写入的节点：主节点与 WiFi 节点信息均缺失。"
   local joined; joined="$(IFS=,; echo "${ins[*]}")"
@@ -38,18 +47,23 @@ write_xray_config() {
 # 写入新配置后必须 (re)start，不能只靠 enable --now：服务已在运行时它是 no-op，
 # 进程会继续加载旧配置，表现为“配置写了新端口却没监听新端口”。
 restart_xray_and_wait() {
-  local port="$1"
+  local port="$1" proto="${2:-tcp}" ok=0
   systemctl enable xray
   systemctl daemon-reload 2>/dev/null || true
   if service_is_active xray; then systemctl restart xray; else systemctl start xray; fi
   # 校验端口是否真的监听：Xray 报 running 但未绑定端口是常见“参数对却连不上”陷阱
-  if ! wait_for_listen "$port" 20; then
-    say "⚠ 警告: Xray 未在 $port 端口监听，正在排查..."
-    ss -lntp 2>/dev/null | grep -w "$port" || say "（当前无任何进程监听 $port）"
-    say "（Xray 实际监听端口：）"; ss -lntp 2>/dev/null | grep -i xray || say "（ss 未列出 xray，可能未真正启动）"
+  if [[ "$proto" == "udp" ]]; then
+    if wait_for_listen_udp "$port" 20; then ok=1; fi
+  else
+    if wait_for_listen "$port" 20; then ok=1; fi
+  fi
+  if (( ! ok )); then
+    say "⚠ 警告: Xray 未在 $proto/$port 端口监听，正在排查..."
+    ss -lntup 2>/dev/null | grep -w "$port" || say "（当前无任何进程监听该端口）"
+    say "（Xray 实际监听端口：）"; ss -lntup 2>/dev/null | grep -i xray || say "（ss 未列出 xray，可能未真正启动）"
     say "--- 最近日志 ---"; journalctl -u xray -n 20 --no-pager 2>/dev/null || true
     say "--- 实际启动命令 ---"; systemctl show xray -p ExecStart 2>/dev/null || true
-    die "Xray 未监听 $port。请检查上方日志（常见原因：端口被占用 / systemd 单元 ExecStart 被覆写 / 配置未加载）。"
+    die "Xray 未监听 $proto/$port。请检查上方日志（常见原因：端口被占用 / systemd 单元 ExecStart 被覆写 / 配置未加载）。"
   fi
 }
 
@@ -90,7 +104,7 @@ EOF
   printf 'nameserver %s\nnameserver %s\noptions timeout:2 attempts:2\n' "$ns1" "$ns2" >/etc/resolv.conf
   systemctl restart systemd-resolved 2>/dev/null || true
   sleep 2
-  if port_in_use 53; then restore_dns_53; return 1; fi
+  if port_in_use 53 || port_in_use_udp 53; then restore_dns_53; return 1; fi
   if command -v getent >/dev/null 2>&1 && ! getent hosts "$SNI" >/dev/null 2>&1; then
     say "⚠ 释放 53 后 DNS 解析失败（Reality 需要解析 $SNI），已自动回滚。"
     restore_dns_53
@@ -130,21 +144,21 @@ install_xray() {
 }
 
 install_wifi_node() {
-  # WiFi web 跳验证：独立的专属节点（独立 inbound、独立密钥、独立端口），不覆盖主节点。
-  # 端口落在网关默认放行的 DNS/DHCP/NTP（53/67/68/123），把流量伪装成 DNS 以绕过热点 Web 认证。
-  local port="" uuid keys private public short server
+  # WiFi web 跳验证：独立的专属节点 —— Vmess + mKCP（UDP）+ DNS 伪装，不覆盖主节点。
+  # 热点为把用户跳到 Web 认证页会放行 UDP 53 的 DNS 报文，故走 UDP:53（Reality 是 TCP，过不去）。
+  local port="" uuid server domain stale
   ensure_xray
   server="$(detect_public_ip)" || die "Unable to detect public IPv4."
   if [[ -f "$NODE_FILE" ]]; then source "$NODE_FILE" 2>/dev/null || true; fi
-  # 已存在 WiFi 节点且该端口正由 Xray 监听 → 直接复用。
-  # 否则第二次运行会把"Xray 自己占着 53"误判成"53 被别的程序占用"，从而漂移到 67/68/123。
+  domain="${WIFI_DOMAIN:-$SNI}"
+  # 已存在 WiFi 节点且端口仍在 UDP 监听 → 复用，避免重跑时把 Xray 自己占的 53 误判为“被占用”而漂移
   if [[ "${WIFI:-0}" == "1" && -n "${WIFI_PORT:-}" ]] \
-     && ss -lntp 2>/dev/null | grep -w "${WIFI_PORT}" | grep -qi xray; then
+     && ss -lnup 2>/dev/null | grep -w "${WIFI_PORT}" | grep -qi xray; then
     port="$WIFI_PORT"
-    say "检测到已存在的 WiFi 节点（端口 $port）：复用该端口并轮换密钥。"
+    say "检测到已存在的 WiFi 节点（UDP $port）：复用该端口并轮换 UUID。"
   fi
   if [[ -z "$port" ]]; then
-    if ! port_in_use 53; then
+    if ! port_in_use 53 && ! port_in_use_udp 53; then
       port=53
     else
       say "端口 53 已被占用（最常见：systemd-resolved 的 127.0.0.53 stub 监听）。53 是网关放行率最高的端口。"
@@ -156,42 +170,44 @@ install_wifi_node() {
   if [[ -z "$port" ]]; then
     port="$(choose_bypass_port)" || die "WiFi 跳验证端口 53/67/68/123 均被占用，请释放后重试。"
   fi
-  uuid="$(xray uuid)"; keys="$(xray x25519)"; private="$(key 'private' "$keys")"; public="$(key 'public' "$keys")"
-  [[ -n "$uuid" && -n "$private" && -n "$public" ]] || die "Unable to read Xray Reality keys."
-  short="$(openssl rand -hex 8)"
+  uuid="$(xray uuid)"
+  [[ -n "$uuid" ]] || die "无法生成 Vmess UUID。"
   install -d -m 0755 "$DATA_DIR"
   [[ -f "$NODE_FILE" ]] || install -m 0600 /dev/null "$NODE_FILE"
+  # Vmess 分享链接：vmess://<base64(JSON)>，v2rayN/v2rayNG 可直接导入（net=kcp + type=dns 伪装）
+  local vj vuri
+  vj="$(printf '{"v":"2","ps":"WiFi-%s","add":"%s","port":"%s","id":"%s","aid":"0","scy":"auto","net":"kcp","type":"dns","host":"%s","path":"","tls":"","sni":"","alpn":"","fp":""}' "$server" "$server" "$port" "$uuid" "$domain")"
+  vuri="vmess://$(printf '%s' "$vj" | base64 -w0)"
   env_upsert "$NODE_FILE" SERVER "$server"
   env_upsert "$NODE_FILE" SNI "$SNI"
   env_upsert "$NODE_FILE" WIFI 1
   env_upsert "$NODE_FILE" WIFI_PORT "$port"
   env_upsert "$NODE_FILE" WIFI_UUID "$uuid"
-  env_upsert "$NODE_FILE" WIFI_PRIVATE_KEY "$private"
-  env_upsert "$NODE_FILE" WIFI_PUBLIC_KEY "$public"
-  env_upsert "$NODE_FILE" WIFI_SHORT_ID "$short"
+  env_upsert "$NODE_FILE" WIFI_DOMAIN "$domain"
   env_upsert "$NODE_FILE" WIFI_NODE_NAME "WiFi-$server"
-  env_upsert "$NODE_FILE" WIFI_URI "\"vless://$uuid@$server:$port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public&sid=$short&type=tcp#WiFi-$server\""
+  env_upsert "$NODE_FILE" WIFI_URI "\"$vuri\""
+  # 清掉旧版（Reality 版 WiFi 节点）残留键，避免和 mKCP 节点混淆
+  for stale in WIFI_PRIVATE_KEY WIFI_PUBLIC_KEY WIFI_SHORT_ID; do sed -i "/^${stale}=/d" "$NODE_FILE"; done
   chmod 0600 "$NODE_FILE"
   # shellcheck disable=SC1090
   source "$NODE_FILE"
   write_xray_config
-  restart_xray_and_wait "$port"
-  command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && { ufw allow "$port/tcp"; ufw allow "$port/udp"; } || true
+  restart_xray_and_wait "$port" udp
+  command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && { ufw allow "$port/udp"; ufw allow "$port/tcp"; } || true
   "$SCRIPT_DIR/subscription.sh" generate
-  say "✓ WiFi web 跳验证专属节点已就绪：监听 $port（网关常放行的 DNS/DHCP/NTP 端口）。"
-  say "  该节点独立于主节点（各自 inbound、各自密钥），主节点仍监听 ${PORT:-（未配置）}，不受影响。"
-  say "  专用节点链接：$WIFI_URI"
-  # Reality 的 dest 依赖 DNS 解析：解析不了就握不上手，表现为“端口在监听但死活连不上”
+  say "✓ WiFi web 跳验证专属节点已就绪：Vmess + mKCP，监听 UDP $port（伪装 DNS）。"
+  say "  独立于主节点（各自 inbound、各自端口），主节点仍监听 ${PORT:-（未配置）}，不受影响。"
+  say "  专用节点分享链接（vmess://，用 v2rayN / v2rayNG 导入）："
+  say "  $WIFI_URI"
   if command -v getent >/dev/null 2>&1; then
-    if getent hosts "$SNI" >/dev/null 2>&1; then
-      say "  ✓ DNS 自检：$SNI 可解析（Reality dest 正常）。"
+    if getent hosts "$domain" >/dev/null 2>&1; then
+      say "  ✓ DNS 自检：$domain 可解析。"
     else
-      say "  ⚠ DNS 自检失败：服务器解析不了 $SNI，Reality 握手必然失败 —— 请检查 /etc/resolv.conf 里的 nameserver 是否可达。"
+      say "  ⚠ DNS 自检失败：服务器解析不了 $domain —— 请检查 /etc/resolv.conf 里的 nameserver 是否可达。"
     fi
   fi
-  say "  客户端：请用 v2rayN / v2rayNG（Xray 核心）导入并开启“DNS 代理 / 防泄漏”走全局；clash / sing-box 对 53 端口伪装支持不佳。"
+  say "  客户端：必须用 v2rayN / v2rayNG（Xray 核心）导入本链接，开启“DNS 代理 / 防泄漏”并走全局；clash / sing-box 对 UDP:53 伪装支持不佳。"
   say "  注意：阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境仍可能失效。"
-  say "  限制：Reality 只能跑 TCP，所以本节点是 TCP:$port；部分热点只放行 UDP 53（真正的 DNS 报文），那种环境下仍会失败。"
 }
 
 remove_wifi_node() {
@@ -201,7 +217,7 @@ remove_wifi_node() {
   [[ "${WIFI:-0}" == "1" ]] || die "当前没有 WiFi 跳验证节点。"
   confirm "确认移除 WiFi 跳验证专属节点（端口 ${WIFI_PORT:-未知}）？" || { say "已取消。"; return; }
   local k
-  for k in WIFI WIFI_PORT WIFI_UUID WIFI_PRIVATE_KEY WIFI_PUBLIC_KEY WIFI_SHORT_ID WIFI_NODE_NAME WIFI_URI; do
+  for k in WIFI WIFI_PORT WIFI_UUID WIFI_DOMAIN WIFI_NODE_NAME WIFI_URI; do
     sed -i "/^${k}=/d" "$NODE_FILE"
   done
   # shellcheck disable=SC1090
@@ -220,7 +236,7 @@ remove_wifi_node() {
 
 require_root
 while true; do
-  clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "6. WiFi web 跳验证（独立节点 · 端口53）"; say "7. 移除 WiFi 跳验证节点"; say "0. 返回"
+  clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "6. WiFi web 跳验证（独立节点 · Vmess+mKCP UDP53）"; say "7. 移除 WiFi 跳验证节点"; say "0. 返回"
   read -r -p "请选择: " c
   case "$c" in
     1) install_xray; read -r -p "请按回车继续..." _;;

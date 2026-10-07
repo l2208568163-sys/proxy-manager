@@ -4,27 +4,26 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh
 source "$SCRIPT_DIR/../lib/common.sh"
 
-# 输出一个 VLESS-Reality 节点条目。参数：名称 端口 UUID 公钥 shortId 是否加分片(1/0)
-# 分片（fragment）用于 WiFi web 跳验证：拆分 TLS ClientHello 以抗浅层 SNI/DPI。
+# 输出主节点（VLESS-Reality）。Clash 订阅只含主节点：
+# WiFi 跳验证节点是 Vmess+mKCP(UDP:53)，clash/sing-box 对它支持不佳，故改用 vmess:// 链接由 v2rayN/v2rayNG 导入。
+# 若 BYPASS=1（旧版把主节点放在放行端口），仍为主节点加 fragment 分片以兼容旧配置。
 proxy_yaml() {
-  local name="$1" port="$2" uuid="$3" pub="$4" sid="$5" frag="$6" frag_yaml=""
-  if [[ "$frag" == "1" ]]; then
-    frag_yaml='
+  local frag=""
+  if [[ "${BYPASS:-0}" == "1" ]]; then
+    frag='
     fragment:
       packets: tlshello
       length: 100-200
       interval: 20-40'
   fi
   printf '  - name: "%s"\n    type: vless\n    server: "%s"\n    port: %s\n    uuid: "%s"\n    encryption: "none"\n    network: tcp\n    udp: true\n    tls: true\n    flow: xtls-rprx-vision\n    servername: "%s"\n    client-fingerprint: chrome\n    reality-opts:\n      public-key: "%s"\n      short-id: "%s"%s\n' \
-    "$name" "$SERVER" "$port" "$uuid" "$SNI" "$pub" "$sid" "$frag_yaml"
+    "${NODE_NAME:-Reality-$SERVER}" "$SERVER" "$PORT" "$UUID" "$SNI" "$PUBLIC_KEY" "$SHORT_ID" "$frag"
 }
 
 generate() {
   load_node_data; install -d -m 0755 "$WEB_ROOT"
-  local main_ok=0 wifi_ok=0
-  if [[ -n "${UUID:-}" && -n "${PUBLIC_KEY:-}" && -n "${SHORT_ID:-}" && -n "${PORT:-}" ]]; then main_ok=1; fi
-  if [[ "${WIFI:-0}" == "1" && -n "${WIFI_UUID:-}" && -n "${WIFI_PUBLIC_KEY:-}" && -n "${WIFI_SHORT_ID:-}" && -n "${WIFI_PORT:-}" ]]; then wifi_ok=1; fi
-  (( main_ok || wifi_ok )) || die "没有可用节点：主节点与 WiFi 跳验证节点均缺失。"
+  [[ -n "${UUID:-}" && -n "${PUBLIC_KEY:-}" && -n "${SHORT_ID:-}" && -n "${PORT:-}" ]] \
+    || die "没有主节点可生成 Clash 订阅（WiFi 跳验证节点是 Vmess/mKCP，请用 v2rayN/v2rayNG 导入它的 vmess:// 链接）。"
   # 订阅随机令牌：订阅路径不可猜测。固定路径 /clash/config.yaml 会被扫段者直接取走
   # 含 UUID 的节点配置（UUID 即 VLESS 唯一凭证）。
   if [[ -z "${SUB_TOKEN:-}" ]]; then
@@ -45,15 +44,9 @@ generate() {
     printf '  fallback:\n    - https://dns.google/dns-query\n    - https://1.0.0.1/dns-query\n'
     printf '  proxy-server-nameserver:\n    - https://1.1.1.1/dns-query\n'
     printf 'proxies:\n'
-    if (( main_ok )); then
-      proxy_yaml "${NODE_NAME:-Reality-$SERVER}" "$PORT" "$UUID" "$PUBLIC_KEY" "$SHORT_ID" "${BYPASS:-0}"
-    fi
-    if (( wifi_ok )); then
-      proxy_yaml "${WIFI_NODE_NAME:-WiFi-$SERVER}" "$WIFI_PORT" "$WIFI_UUID" "$WIFI_PUBLIC_KEY" "$WIFI_SHORT_ID" 1
-    fi
+    proxy_yaml
     printf 'proxy-groups:\n  - name: Proxy\n    type: select\n    proxies:\n'
-    if (( main_ok )); then printf '      - "%s"\n' "${NODE_NAME:-Reality-$SERVER}"; fi
-    if (( wifi_ok )); then printf '      - "%s"\n' "${WIFI_NODE_NAME:-WiFi-$SERVER}"; fi
+    printf '      - "%s"\n' "${NODE_NAME:-Reality-$SERVER}"
     printf '      - DIRECT\n'
     printf 'rules:\n  - MATCH,Proxy\n'
   } >"$sub_dir/config.yaml"
@@ -69,7 +62,6 @@ generate() {
     if [[ "$code" == "200" ]]; then say "✓ 自检: 订阅 URL 本地可访问 (HTTP 200)。"; else say "⚠ 自检: 本地请求返回 HTTP ${code:-无响应}（若仅本机测不到公网 IP 属正常，请以浏览器访问为准）。"; fi
   fi
   say "URL: $SUBSCRIPTION_URL"
-  (( wifi_ok )) && say "✓ 订阅含 WiFi web 跳验证专属节点（端口 ${WIFI_PORT}，带 fragment 分片）。"
   say "⚠ 订阅地址含随机令牌，等同节点凭证，请勿泄露。"
 }
 case "${1:-}" in generate) require_root; generate; exit;; show) load_node_data; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先执行生成。}"; exit;; "") ;; *) die "Usage: subscription.sh [generate|show]";; esac

@@ -36,7 +36,7 @@ It helps you deploy:
 - Protocols: VLESS + Reality + Vision Flow + TCP
 - Auto-generates: `UUID`, `Private Key`, `Public Key`, `Short ID`
 - Picks a free port from `443 / 8443 / 2053 / 2083`
-- **WiFi web-auth bypass mode**: open a **separate dedicated node** on gateway-allowed `53 / 67 / 68 / 123` (DNS/DHCP/NTP); the subscription auto-adds `fragment` to split the TLS ClientHello against shallow SNI/DPI, bypassing captive portals at cafés/hotels (see the dedicated section below; still fails on deep-inspection networks)
+- **WiFi web-auth bypass mode**: open a **separate dedicated node** (Vmess + mKCP, UDP) on gateway-allowed `53 / 67 / 68 / 123`, disguised as **DNS**, bypassing captive portals at cafés/hotels (see the dedicated section below; still fails on deep-inspection networks)
 - Validates the Xray config before writing, and generates a VLESS URI + node info file
 
 ### 🌐 Clash Subscription
@@ -44,14 +44,13 @@ It helps you deploy:
 - Auto-generates a subscription URL with a **random token**: `http://SERVER_IP/clash/<token>/config.yaml` — the path is unguessable, keeping node credentials safe from scanners
 - Paste the URL to import
 
-### 📶 WiFi Web-auth Bypass (Dedicated Node)
-- **Dedicated node**: its own Xray inbound, coexisting with the main node — separate port, separate UUID / Reality keys
-- Port sits on gateway-allowed `53 / 67 / 68 / 123` (DNS/DHCP/NTP), disguising traffic as DNS to slip past hotspot web auth
-- Prefers **53**; if systemd-resolved's stub listener holds it, the script can release it (disable the stub and switch to static DNS, backing up `/etc/resolv.conf` to `.bak.proxy-manager`)
-- The subscription auto-adds `fragment` (splits the TLS ClientHello) for this node against shallow SNI/DPI
-- Use **v2rayN / v2rayNG (Xray core)** with "DNS proxy / anti-leak" enabled in global mode; clash / sing-box handle port-53 disguise poorly
-- Known limits: **Reality is TCP-only**, so this node is `TCP:53`; some hotspots only allow UDP 53 (real DNS datagrams) and will still fail. Some providers (e.g. Alibaba Cloud) block port 53 for personal use; deep-inspection networks (SNI blocking / real DNS proxying) may still fail
-- Troubleshooting: Reality's dest needs DNS. If `/etc/resolv.conf` becomes unreachable after releasing port 53, the node "listens but never connects"; the script self-checks DNS and rolls back automatically
+### 📶 WiFi Web-auth Bypass (Dedicated Node · Vmess + mKCP)
+- **Dedicated node**: its own Xray inbound (Vmess + mKCP, **UDP**), coexisting with the main node — separate port, separate UUID
+- Port sits on gateway-allowed `53 / 67 / 68 / 123` and disguises traffic as **DNS** (mKCP header = `dns`). Hotspots allow UDP 53 DNS to redirect you to the auth page, so UDP works best (Reality is TCP-only and cannot pass)
+- Prefers **53**; if systemd-resolved's stub listener holds it, the script can release it (disable the stub, keep the machine's existing DNS, back up `/etc/resolv.conf` to `.bak.proxy-manager`); it **rolls back automatically** if DNS breaks
+- Parameters match 3x-ui defaults: MTU 1350 / TTI 50 / uplink·downlink 20 MB/s / congestion off / read·write buffer 2
+- Client: import the printed `vmess://` link with **v2rayN / v2rayNG (Xray core)**, enable "DNS proxy / anti-leak" in global mode. clash / sing-box handle UDP:53 disguise poorly, so this node is **not** put into the Clash subscription
+- Known limits: some providers (e.g. Alibaba Cloud) block port 53 for personal use; deep-inspection networks (SNI blocking / real DNS proxying) may still fail
 
 ### ⚡ System Optimization
 - BBR, TCP Fast Open, FQ queue

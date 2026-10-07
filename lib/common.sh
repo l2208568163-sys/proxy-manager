@@ -26,7 +26,7 @@ load_node_data() {
   for key in UUID PUBLIC_KEY SHORT_ID PORT; do
     [[ -n "${!key:-}" ]] || main_ok=0
   done
-  for key in WIFI_UUID WIFI_PUBLIC_KEY WIFI_SHORT_ID WIFI_PORT; do
+  for key in WIFI_UUID WIFI_PORT; do
     [[ -n "${!key:-}" ]] || wifi_ok=0
   done
   (( main_ok || wifi_ok )) || die "节点数据不完整：主节点与 WiFi 节点信息均缺失。"
@@ -46,12 +46,15 @@ env_upsert() {
   fi
 }
 port_in_use() { ss -ltn 2>/dev/null | awk -v p="$1" '$4 ~ (":" p "$") { found=1 } END { exit !found }'; }
+# mKCP 走 UDP，必须单独查 UDP 监听
+port_in_use_udp() { ss -lun 2>/dev/null | awk -v p="$1" '$4 ~ (":" p "$") { found=1 } END { exit !found }'; }
 choose_available_port() { local p; for p in 443 8443 2053 2083; do port_in_use "$p" || { echo "$p"; return; }; done; return 1; }
 # WiFi web 跳验证：优先选网关默认放行的端口（DNS/DHCP/NTP 等），用于绕过 captive portal
-# 这些端口常被热点放行以便跳转到 Web 认证页；Xray 仍为 TCP 监听，配合订阅侧 fragment 分片抗浅层 SNI/DPI
-choose_bypass_port() { local p; for p in 53 67 68 123; do port_in_use "$p" || { echo "$p"; return; }; done; return 1; }
+# 用 Vmess + mKCP（UDP）+ DNS 伪装：热点通常放行 UDP 53 的 DNS 报文，故走 UDP 最有效
+choose_bypass_port() { local p; for p in 53 67 68 123; do { port_in_use "$p" || port_in_use_udp "$p"; } && continue; echo "$p"; return; done; return 1; }
 # 等待端口进入监听，默认最多 5 秒（每 0.5s 探一次）；成功返回 0
 wait_for_listen() { local p="$1" tries="${2:-10}" i=0; while (( i < tries )); do port_in_use "$p" && return 0; sleep 0.5; i=$((i+1)); done; return 1; }
+wait_for_listen_udp() { local p="$1" tries="${2:-10}" i=0; while (( i < tries )); do port_in_use_udp "$p" && return 0; sleep 0.5; i=$((i+1)); done; return 1; }
 detect_public_ip() {
   local url ip
   for url in https://api.ipify.org https://ifconfig.me/ip https://ipv4.icanhazip.com; do

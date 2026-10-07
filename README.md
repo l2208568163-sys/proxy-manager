@@ -37,7 +37,7 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 协议：VLESS + Reality + Vision Flow + TCP
 - 自动生成：`UUID`、`Private Key`、`Public Key`、`Short ID`
 - 从 `443 / 8443 / 2053 / 2083` 中自动选择空闲端口
-- **WiFi web 跳验证模式**：可开一个**独立的专属节点**放入网关默认放行的 `53 / 67 / 68 / 123`（DNS/DHCP/NTP），订阅自动加入 `fragment` 分片抗浅层 SNI/DPI，绕过咖啡厅/酒店等 captive portal（详见下方专节；深度检测环境仍可能失效）
+- **WiFi web 跳验证模式**：可开一个**独立的专属节点**（Vmess + mKCP，UDP），端口落在网关默认放行的 `53 / 67 / 68 / 123` 并**伪装成 DNS**，绕过咖啡厅/酒店等 captive portal（详见下方专节；深度检测环境仍可能失效）
 - 写配置前执行 Xray 配置校验，并生成 VLESS URI 与节点信息文件
 
 ### 🌐 Clash 订阅
@@ -45,14 +45,13 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 自动生成带**随机令牌**的订阅地址：`http://服务器IP/clash/<令牌>/config.yaml`，路径不可猜测，防止节点凭证被扫段获取
 - 复制 URL 即可导入
 
-### 📶 WiFi web 跳验证（独立专属节点）
-- **独立节点**：独立 Xray inbound，与主节点并存 —— 各自端口、各自 UUID / Reality 密钥，互不影响
-- 端口落在网关默认放行的 `53 / 67 / 68 / 123`（DNS/DHCP/NTP），把流量伪装成 DNS 以绕过热点 Web 认证
-- 优先使用 **53**；若被 systemd-resolved 的 stub 监听占用，可自动释放（关闭 stub 并改用静态 DNS，原 `/etc/resolv.conf` 备份为 `.bak.proxy-manager`）
-- 订阅自动为该节点加入 `fragment` 分片（拆分 TLS ClientHello）以抗浅层 SNI/DPI
-- 客户端请用 **v2rayN / v2rayNG（Xray 核心）** 并开启“DNS 代理 / 防泄漏”走全局；clash / sing-box 对 53 端口伪装支持不佳
-- 已知限制：**Reality 只能跑 TCP**，故本节点是 `TCP:53`；部分热点只放行 UDP 53（真正的 DNS 报文），那种环境仍会失效。阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境同样可能失效
-- 排错要点：Reality 的 dest 依赖 DNS 解析，若释放 53 后 `/etc/resolv.conf` 不可达，节点会“端口在监听却连不上”；脚本会自动自检并在 DNS 不可用时回滚
+### 📶 WiFi web 跳验证（独立专属节点 · Vmess + mKCP）
+- **独立节点**：独立 Xray inbound（Vmess + mKCP，**UDP**），与主节点并存 —— 各自端口、各自 UUID，互不影响
+- 端口落在网关默认放行的 `53 / 67 / 68 / 123`，并把流量**伪装成 DNS**（mKCP header = `dns`）。热点为跳转 Web 认证页会放行 UDP 53 的 DNS 报文，故走 UDP 最有效（Reality 只能跑 TCP，过不去）
+- 优先使用 **53**；若被 systemd-resolved 的 stub 监听占用，可自动释放（关闭 stub 并改用静态 DNS，**保留机器原有 DNS**，原 `/etc/resolv.conf` 备份为 `.bak.proxy-manager`）；释放后若 DNS 不可用会**自动回滚**
+- 参数对齐 3x-ui 默认：MTU 1350 / TTI 50 / 上下行 20 MB/s / congestion 关 / read·write buffer 2
+- 客户端：用 **v2rayN / v2rayNG（Xray 核心）** 导入输出的 `vmess://` 链接，开启“DNS 代理 / 防泄漏”走全局。clash / sing-box 对 UDP:53 伪装支持不佳，故该节点**不进 Clash 订阅**
+- 已知限制：阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境仍可能失效
 
 ### ⚡ 系统优化
 - BBR、TCP Fast Open、FQ 队列
