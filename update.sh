@@ -10,5 +10,5 @@ git -C "$BASE_DIR" fetch --prune origin
 git -C "$BASE_DIR" pull --ff-only origin main
 find "$BASE_DIR" -type f -name '*.sh' -exec chmod 0755 {} +
 systemctl daemon-reload
-restart_if_active xray; restart_if_active mihomo; restart_if_active nginx
+restart_if_active xray; restart_if_active nginx
 say "Update completed. Current version: $(<"$BASE_DIR/VERSION")"

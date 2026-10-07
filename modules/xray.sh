@@ -100,7 +100,7 @@ install_xray() {
   restart_xray_and_wait "$port"
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && ufw allow "$port/tcp" || true
   "$SCRIPT_DIR/subscription.sh" generate
-  say "Xray 已启动并在 $port 监听。订阅地址见上方输出（含随机令牌，也可在主菜单 9 查看）。"
+  say "Xray 已启动并在 $port 监听。订阅地址见上方输出（含随机令牌，也可在主菜单 7 查看）。"
 }
 
 install_wifi_node() {

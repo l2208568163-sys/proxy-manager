@@ -1,7 +1,7 @@
 # 🚀 Proxy-Manager
 
 <p align="center">
-  <b>Ubuntu 上的 Xray Reality + Mihomo + Clash 订阅 一站式部署工具</b>
+  <b>Ubuntu 上的 Xray Reality + Clash 订阅 一站式部署工具</b>
 </p>
 
 <p align="center">
@@ -23,9 +23,9 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 它可以帮你快速部署：
 
 - **Xray Reality** 节点（VLESS + Reality + Vision）
-- **Mihomo**（Clash Meta）客户端
 - **Clash URL 订阅**（HTTP 订阅文件）
 - **BBR** 网络优化
+> 客户端内核（Clash Verge / v2rayN 等）装在你自己的设备上即可，本项目不再内置客户端模块。
 
 > 目标：用一条命令完成服务器代理环境的部署与日常管理。
 
@@ -44,10 +44,6 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 兼容 Clash Verge、Clash Meta、Mihomo Party 等客户端
 - 自动生成带**随机令牌**的订阅地址：`http://服务器IP/clash/<令牌>/config.yaml`，路径不可猜测，防止节点凭证被扫段获取
 - 复制 URL 即可导入
-
-### 🚀 Mihomo
-- TUN 模式、Fake-IP DNS、自动路由、分流规则
-- 先安装核心，再导入并校验订阅 URL 后才启动
 
 ### 📶 WiFi web 跳验证（独立专属节点）
 - **独立节点**：独立 Xray inbound，与主节点并存 —— 各自端口、各自 UUID / Reality 密钥，互不影响
@@ -94,14 +90,13 @@ proxy
 ================================
  1. Xray Reality 节点
  2. Clash 订阅
- 3. Mihomo 客户端
- 4. 系统优化
- 5. 安全加固
- 6. Web 订阅服务
- 7. 健康检查
- 8. 查看节点信息
- 9. 更新程序
-10. 卸载 Proxy Manager
+ 3. 系统优化
+ 4. 安全加固
+ 5. Web 订阅服务
+ 6. 健康检查
+ 7. 查看节点信息
+ 8. 更新程序
+ 9. 卸载 Proxy Manager
  0. 退出
 ```
 
@@ -119,7 +114,7 @@ proxy --help      # 帮助
 ---
 
 ## 📱 Clash 导入
-安装完成后会生成带随机令牌的订阅地址（形如 `http://服务器IP/clash/<令牌>/config.yaml`，可在主菜单 9 查看）：
+安装完成后会生成带随机令牌的订阅地址（形如 `http://服务器IP/clash/<令牌>/config.yaml`，可在主菜单 7 查看）：
 
 以 Clash Verge 为例：
 ```
@@ -142,7 +137,6 @@ Proxy-Manager
 ├── modules/
 │   ├── xray.sh          Xray Reality
 │   ├── subscription.sh  Clash 订阅
-│   ├── mihomo.sh        Mihomo 客户端
 │   ├── system.sh        系统优化
 │   ├── security.sh      安全加固
 │   └── web.sh           Nginx 订阅服务
@@ -158,7 +152,7 @@ Proxy-Manager
 - **不要上传** `data/node.env`：含 `PRIVATE_KEY` / `UUID`。
 - **订阅地址含随机令牌，等同节点凭证**，请勿公开分享；泄露后可重新生成订阅并更换 `SUB_TOKEN`。
 - 本仓库 `.gitignore` 已默认忽略 `data/node.env`、`__pycache__/`。
-- 使用 SSH 密钥登录，仅开放必要端口，定期更新系统 / Xray / Mihomo。
+- 使用 SSH 密钥登录，仅开放必要端口，定期更新系统 / Xray。
 - 本项目不提供匿名性或绕过当地法律的保证；请遵守所在地法律与服务商规则。
 
 ---
@@ -172,7 +166,7 @@ Proxy-Manager
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
 - [x] **v3.3.0** Web 认证跳过（端口53 + 分片）/ **移除 Web 管理面板**（FastAPI 面板与 modules/webpanel.sh 已删除）/ 文档同步更新
-- [x] **v3.4.0** **移除整个 DNS 模块**（AdGuard Home + 系统 DNS 优化，modules/dns.sh 已删除）/ 主菜单重排（移除 DNS 管理项）/**“Web 认证跳过”更名为「WiFi web 跳验证」并改为独立专属节点**（独立 inbound、独立密钥与端口，不覆盖主节点；可自动释放 53）
+- [x] **v3.4.0** **移除整个 DNS 模块**（AdGuard Home + 系统 DNS 优化，modules/dns.sh 已删除）/ **移除 Mihomo 客户端模块**（modules/mihomo.sh 已删除）/ **“Web 认证跳过”更名为「WiFi web 跳验证」并改为独立专属节点**（独立 inbound、独立密钥与端口，不覆盖主节点；可自动释放 53）/ 主菜单重排
 - [ ] 多节点管理 / 流量统计 / API 管理
 
 > 注：v3.3.0 起彻底移除 Web 管理面板（FastAPI + webpanel.sh）；**v3.4.0 起进一步移除整个 DNS 模块（含 AdGuard Home 与系统 DNS 优化，modules/dns.sh 已删除）**，主菜单相应重排。v3.2 系列中与面板相关的条目仅作为历史记录保留，当前版本不再包含该组件。

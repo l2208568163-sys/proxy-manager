@@ -1,7 +1,7 @@
 # 🚀 Proxy-Manager
 
 <p align="center">
-  <b>One-click deployment tool for Xray Reality + Mihomo + Clash subscription on Ubuntu Server</b>
+  <b>One-click deployment tool for Xray Reality + Clash subscription on Ubuntu Server</b>
 </p>
 
 <p align="center">
@@ -23,7 +23,6 @@ Proxy-Manager is an automated proxy-node management tool for Ubuntu Server. It t
 It helps you deploy:
 
 - **Xray Reality** nodes (VLESS + Reality + Vision)
-- **Mihomo** (Clash Meta) client
 - **Clash URL subscription** (HTTP subscription file)
 - **BBR** network optimization
 
@@ -44,10 +43,6 @@ It helps you deploy:
 - Compatible with Clash Verge, Clash Meta, Mihomo Party, etc.
 - Auto-generates a subscription URL with a **random token**: `http://SERVER_IP/clash/<token>/config.yaml` — the path is unguessable, keeping node credentials safe from scanners
 - Paste the URL to import
-
-### 🚀 Mihomo
-- TUN mode, Fake-IP DNS, auto-routing, rule-based split
-- Installs the core first, then validates the subscription URL before starting
 
 ### 📶 WiFi Web-auth Bypass (Dedicated Node)
 - **Dedicated node**: its own Xray inbound, coexisting with the main node — separate port, separate UUID / Reality keys
@@ -94,14 +89,13 @@ Main menu:
 ================================
  1. Xray Reality
  2. Clash Subscription
- 3. Mihomo
- 4. System Optimization
- 5. Security Hardening
- 6. Web Subscription Service
- 7. Health Check
- 8. Node Information
- 9. Update
-10. Uninstall
+ 3. System Optimization
+ 4. Security Hardening
+ 5. Web Subscription Service
+ 6. Health Check
+ 7. Node Information
+ 8. Update
+ 9. Uninstall
  0. Exit
 ```
 
@@ -119,7 +113,7 @@ proxy --help      # help
 ---
 
 ## 📱 Clash Import
-After installation you get a subscription URL with a random token (like `http://SERVER_IP/clash/<token>/config.yaml`; view it in menu 9):
+After installation you get a subscription URL with a random token (like `http://SERVER_IP/clash/<token>/config.yaml`; view it in menu 7):
 
 In Clash Verge: `Profiles → New Profile → URL → paste the subscription URL`.
 
@@ -139,7 +133,6 @@ Proxy-Manager
 ├── modules/
 │   ├── xray.sh          Xray Reality
 │   ├── subscription.sh  Clash subscription
-│   ├── mihomo.sh        Mihomo client
 │   ├── system.sh        system optimization
 │   ├── security.sh      security hardening
 │   └── web.sh           Nginx subscription service
@@ -155,7 +148,7 @@ Proxy-Manager
 - **Never upload** `data/node.env`: it holds `PRIVATE_KEY` / `UUID`.
 - **The subscription URL contains a random token and is a node credential** — do not share it publicly. If leaked, regenerate the subscription and rotate `SUB_TOKEN`.
 - This repo's `.gitignore` already excludes `data/node.env`, `__pycache__/`.
-- Use SSH keys, open only required ports, and keep system / Xray / Mihomo updated.
+- Use SSH keys, open only required ports, and keep system / Xray updated.
 - This project gives no guarantee of anonymity or circumvention of local laws; comply with applicable laws and provider rules.
 
 ---
@@ -169,7 +162,7 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
-- [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / main menu rearranged (DNS entry removed) / **renamed "Web-auth bypass" to "WiFi web-auth bypass" and made it a dedicated node** (own inbound, own keys and port, does not overwrite the main node; can release port 53)
+- [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / **removed Mihomo client module** (modules/mihomo.sh deleted) / **renamed "Web-auth bypass" to "WiFi web-auth bypass" and made it a dedicated node** (own inbound, own keys and port, does not overwrite the main node; can release port 53) / main menu rearranged
 - [ ] Multi-node management / traffic stats / API management
 
 > Note: as of v3.3.0 the Web dashboard (FastAPI + webpanel.sh) is fully removed; as of **v3.4.0 the entire DNS module (AdGuard Home + system DNS optimization, modules/dns.sh) is also removed** and the main menu is rearranged accordingly. The v3.2-series entries referencing the dashboard are kept only as historical changelog and are no longer part of the product.

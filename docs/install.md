@@ -10,4 +10,4 @@ bash install.sh
 
 Use `bash install.sh --update-system` only when you also want system packages upgraded. After installation, run `proxy` to open the manager. The installer does not enable UFW; if UFW is already active, the relevant module opens only its own required port (22/80/443).
 
-The subscription URL contains a random token (see `docs/architecture.md`); view it with `proxy` → menu 9 after generating a subscription.
+The subscription URL contains a random token (see `docs/architecture.md`); view it with `proxy` → menu 7 after generating a subscription.

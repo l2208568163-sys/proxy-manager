@@ -1,6 +1,6 @@
 # Proxy Manager 开发部署文档（v3.1 历史版）
 
-> 说明：本文档为 v3.1 时期的开发部署说明，仅作历史参考。后续版本已移除 Web 管理面板（v3.3.0）与整个 DNS 模块（含 AdGuard Home，v3.4.0），modules/dns.sh 已删除。
+> 说明：本文档为 v3.1 时期的开发部署说明，仅作历史参考。后续版本已移除 Web 管理面板（v3.3.0），以及整个 DNS 模块（含 AdGuard Home）与 Mihomo 客户端模块（v3.4.0），modules/dns.sh、modules/mihomo.sh 均已删除。
 
 ## 项目简介
 
@@ -9,7 +9,6 @@ Proxy Manager 是一个基于 Ubuntu 的代理服务自动化管理项目。
 目标：
 
 -   Xray Reality 节点自动部署
--   Mihomo(Clash Meta)管理
 -   Clash URL订阅生成
 -   BBR/TCP网络优化
 -   GitHub版本管理
@@ -27,7 +26,6 @@ proxy-manager-v3/
 ├── modules/
 │   ├── xray.sh
 │   ├── subscription.sh
-│   ├── mihomo.sh
 │   └── system.sh
 
 └── data/
@@ -95,20 +93,9 @@ Clash Verge:
 
 ------------------------------------------------------------------------
 
-# Mihomo
+# Mihomo（已移除）
 
-支持：
-
--   Clash Meta
--   TUN模式
--   Fake-IP DNS
--   自动路由
-
-配置：
-
-``` text
-/etc/mihomo/config.yaml
-```
+> 注：Mihomo 客户端模块（原 modules/mihomo.sh）已在 v3.4.0 移除，本段仅供历史参考。
 
 ------------------------------------------------------------------------
 
@@ -180,12 +167,6 @@ cat /opt/proxy-manager/data/node.env
 
 ``` bash
 systemctl status xray
-```
-
-## Mihomo状态
-
-``` bash
-systemctl status mihomo
 ```
 
 ------------------------------------------------------------------------

@@ -63,7 +63,7 @@ generate() {
   # 自检：历史问题为 nginx 未启动导致订阅空/不可用
   [[ -s "$sub_dir/config.yaml" ]] || die "Clash 配置生成失败（文件为空）。"
   if ! systemctl is-active --quiet nginx 2>/dev/null; then
-    say "⚠ 自检: nginx 未运行，订阅 URL 暂时无法访问 —— 请运行主菜单 7 启动 Web 订阅服务。"
+    say "⚠ 自检: nginx 未运行，订阅 URL 暂时无法访问 —— 请运行主菜单 5 启动 Web 订阅服务。"
   elif command -v curl >/dev/null 2>&1; then
     code=$(curl -o /dev/null -s -w '%{http_code}' "http://127.0.0.1/clash/$SUB_TOKEN/config.yaml" || true)
     if [[ "$code" == "200" ]]; then say "✓ 自检: 订阅 URL 本地可访问 (HTTP 200)。"; else say "⚠ 自检: 本地请求返回 HTTP ${code:-无响应}（若仅本机测不到公网 IP 属正常，请以浏览器访问为准）。"; fi
