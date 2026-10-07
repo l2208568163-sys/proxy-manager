@@ -47,7 +47,10 @@ EOF
 import_config() {
   local url tmp; read -r -p "请输入 Mihomo 订阅 URL: " url; [[ "$url" =~ ^https?:// ]] || die "订阅地址必须以 http:// 或 https:// 开头"
   tmp="$(mktemp)"; trap 'rm -f "$tmp"' RETURN; curl -fsSL --max-time 30 "$url" -o "$tmp"; mihomo -t -f "$tmp" >/dev/null
-  install -d -m 0755 "$MIHOMO_DIR"; install -m 0600 "$tmp" "$MIHOMO_CONFIG"; systemctl enable --now mihomo; say "Mihomo 已启动。"
+  install -d -m 0755 "$MIHOMO_DIR"; install -m 0600 "$tmp" "$MIHOMO_CONFIG"; systemctl enable mihomo
+  systemctl daemon-reload 2>/dev/null || true
+  if service_is_active mihomo; then systemctl restart mihomo; else systemctl start mihomo; fi
+  say "Mihomo 已启动。"
 }
 enable_tun() {
   [[ -f "$MIHOMO_CONFIG" ]] || die "Import a subscription before enabling TUN."

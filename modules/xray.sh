@@ -36,11 +36,16 @@ BYPASS=$bypass
 VLESS_URI="vless://$uuid@$server:$port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public&sid=$short&type=tcp#Reality-$server"
 EOF
   chmod 0600 "$NODE_FILE"
-  systemctl enable --now xray
+  systemctl enable xray
+  # 关键：写入新配置后必须 (re)start，不能只靠 enable --now。Xray 已在运行时 enable --now 是 no-op，
+  # 进程会继续加载旧配置、监听旧端口，从而出现“配置已写 67 却没监听 67”的假失败。
+  systemctl daemon-reload 2>/dev/null || true
+  if service_is_active xray; then systemctl restart xray; else systemctl start xray; fi
   # 校验端口是否真的监听：Xray 报 running 但未绑定端口是常见"参数对却连不上"陷阱
-  if ! wait_for_listen "$port"; then
+  if ! wait_for_listen "$port" 20; then
     say "⚠ 警告: Xray 未在 $port 端口监听，正在排查..."
     ss -lntp 2>/dev/null | grep -w "$port" || say "（当前无任何进程监听 $port）"
+    say "（Xray 实际监听端口：）"; ss -lntp 2>/dev/null | grep -i xray || say "（ss 未列出 xray，可能未真正启动）"
     say "--- 最近日志 ---"; journalctl -u xray -n 20 --no-pager 2>/dev/null || true
     say "--- 实际启动命令 ---"; systemctl show xray -p ExecStart 2>/dev/null || true
     die "Xray 未监听 $port。请检查上方日志（常见原因：端口被占用 / systemd 单元 ExecStart 被覆写 / 配置未加载）。"
