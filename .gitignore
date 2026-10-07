@@ -1,9 +1,8 @@
 # Python
 __pycache__/
 *.pyc
-web/venv/
 
-# 本地工作数据（运行时生成，含节点私钥 / Web 凭据）
+# 本地工作数据（运行时生成，含节点私钥）
 .workbuddy/
 data/
 logs/

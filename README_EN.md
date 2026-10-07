@@ -1,7 +1,7 @@
 # 🚀 Proxy-Manager
 
 <p align="center">
-  <b>One-click deployment tool for Xray Reality + Mihomo + Clash subscription + Web dashboard on Ubuntu Server</b>
+  <b>One-click deployment tool for Xray Reality + Mihomo + Clash subscription on Ubuntu Server</b>
 </p>
 
 <p align="center">
@@ -27,7 +27,6 @@ It helps you deploy:
 - **Clash URL subscription** (HTTP subscription file)
 - **AdGuard Home** DNS
 - **BBR** network optimization
-- **Web management dashboard** (since v3.2, with login auth)
 
 > Goal: deploy and manage a server proxy environment with one command.
 
@@ -59,12 +58,6 @@ It helps you deploy:
 - BBR, TCP Fast Open, FQ queue
 - Fail2ban and unattended-upgrades (security module)
 
-### 🖥 Web Dashboard (v3.2 / v3.2.1)
-- Service status, CPU, memory, network monitoring
-- **Login auth** (random session token; credentials in `data/web.env`)
-- Restart services and view Xray/Mihomo logs online
-- One-click copy of the Clash subscription, node QR code
-
 ---
 
 ## 📦 Installation
@@ -94,7 +87,7 @@ proxy
 Main menu:
 ```
 ================================
- Proxy Manager v3.2.1
+ Proxy Manager v3.3.0
 ================================
  1. Xray Reality
  2. Clash Subscription
@@ -107,7 +100,6 @@ Main menu:
  9. Node Information
 10. Update
 11. Uninstall
-12. Web Dashboard
  0. Exit
 ```
 
@@ -125,24 +117,9 @@ proxy --help      # help
 ---
 
 ## 📱 Clash Import
-After installation you get a subscription URL with a random token (like `http://SERVER_IP/clash/<token>/config.yaml`; view it in menu 9 or the web dashboard):
+After installation you get a subscription URL with a random token (like `http://SERVER_IP/clash/<token>/config.yaml`; view it in menu 9):
 
 In Clash Verge: `Profiles → New Profile → URL → paste the subscription URL`.
-
----
-
-## 🖥 Web Dashboard
-The dashboard **binds to `127.0.0.1:8080` only** by default — it is not exposed publicly. The random password is generated and printed on first setup (`Menu → 12. Web Dashboard → 1`).
-
-Access via SSH tunnel (recommended):
-```bash
-ssh -L 8080:127.0.0.1:8080 user@SERVER_IP
-# then open http://localhost:8080
-```
-
-To expose it publicly: `proxy` → 12 → 7 toggles "public access" (binds `0.0.0.0` and opens 8080). Turn it off when not needed, or put a TLS-terminating reverse proxy in front.
-
-Features: service status, resource monitoring, online restart, log viewing, subscription copy, node QR code.
 
 ---
 
@@ -164,25 +141,19 @@ Proxy-Manager
 │   ├── dns.sh           DNS / AdGuard Home
 │   ├── system.sh        system optimization
 │   ├── security.sh      security hardening
-│   ├── web.sh           Nginx subscription service
-│   └── webpanel.sh      Web dashboard deployment
+│   └── web.sh           Nginx subscription service
 ├── configs/             reference templates
 ├── docs/                docs
-├── tests/
-│   └── check.sh         health check
-└── web/                 FastAPI dashboard
-    ├── app.py / auth.py / service.py / qrgen.py
-    ├── requirements.txt
-    ├── templates/        index.html / login.html
-    └── static/           style.css
+└── tests/
+    └── check.sh         health check
 ```
 
 ---
 
 ## 🔐 Security
-- **Never upload** `data/node.env` and `data/web.env`: the former holds `PRIVATE_KEY` / `UUID`, the latter holds the dashboard password.
+- **Never upload** `data/node.env`: it holds `PRIVATE_KEY` / `UUID`.
 - **The subscription URL contains a random token and is a node credential** — do not share it publicly. If leaked, regenerate the subscription and rotate `SUB_TOKEN`.
-- This repo's `.gitignore` already excludes `data/web.env`, `data/node.env`, `web/venv/`, `__pycache__/`.
+- This repo's `.gitignore` already excludes `data/node.env`, `__pycache__/`.
 - Use SSH keys, open only required ports, and keep system / Xray / Mihomo / AdGuard Home updated.
 - This project gives no guarantee of anonymity or circumvention of local laws; comply with applicable laws and provider rules.
 
@@ -196,7 +167,10 @@ Proxy-Manager
 - [x] **v3.2.3** Guidance layer: install.sh auto-installs Web panel & prints access info / webpanel.sh gains start·stop·address·credentials·reset-password / Web entry starred in CLI menu
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
-- [ ] **v3.3** Web-auth bypass (port 53 + fragment) / Multi-node management / traffic stats / API management
+- [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
+- [ ] Multi-node management / traffic stats / API management
+
+> Note: as of v3.3.0 the Web dashboard (FastAPI + webpanel.sh) is fully removed; the v3.2-series entries referencing it are kept only as historical changelog and are no longer part of the product.
 
 ---
 

@@ -1,7 +1,7 @@
 # 🚀 Proxy-Manager
 
 <p align="center">
-  <b>Ubuntu 上的 Xray Reality + Mihomo + Clash 订阅 + Web 管理面板 一站式部署工具</b>
+  <b>Ubuntu 上的 Xray Reality + Mihomo + Clash 订阅 一站式部署工具</b>
 </p>
 
 <p align="center">
@@ -27,7 +27,6 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - **Clash URL 订阅**（HTTP 订阅文件）
 - **AdGuard Home** DNS
 - **BBR** 网络优化
-- **Web 管理面板**（v3.2 起，带登录认证）
 
 > 目标：用一条命令完成服务器代理环境的部署与日常管理。
 
@@ -59,12 +58,6 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - BBR、TCP Fast Open、FQ 队列
 - Fail2ban 与 unattended-upgrades（安全加固模块）
 
-### 🖥 Web 管理面板（v3.2 / v3.2.1）
-- 服务状态、CPU、内存、网络监控
-- **登录认证**（随机会话令牌，凭据存于 `data/web.env`）
-- 在线重启服务、查看 Xray/Mihomo 日志
-- Clash 订阅一键复制、节点二维码（扫码导入）
-
 ---
 
 ## 📦 安装
@@ -94,7 +87,7 @@ proxy
 主菜单：
 ```
 ================================
- 代理管理器 Proxy Manager v3.2.1
+ 代理管理器 Proxy Manager v3.3.0
 ================================
  1. Xray Reality 节点
  2. Clash 订阅
@@ -107,7 +100,6 @@ proxy
  9. 查看节点信息
 10. 更新程序
 11. 卸载 Proxy Manager
-12. Web 管理面板
  0. 退出
 ```
 
@@ -125,27 +117,12 @@ proxy --help      # 帮助
 ---
 
 ## 📱 Clash 导入
-安装完成后会生成带随机令牌的订阅地址（形如 `http://服务器IP/clash/<令牌>/config.yaml`，可在主菜单 9 或 Web 面板查看）：
+安装完成后会生成带随机令牌的订阅地址（形如 `http://服务器IP/clash/<令牌>/config.yaml`，可在主菜单 9 查看）：
 
 以 Clash Verge 为例：
 ```
 Profiles → New Profile → URL → 粘贴订阅地址
 ```
-
----
-
-## 🖥 Web 管理面板
-面板**默认只监听 `127.0.0.1:8080`**，不直接暴露公网。首次安装（`主菜单 → 12. Web 管理面板 → 1`）会生成随机密码并打印。
-
-访问方式（SSH 隧道，推荐）：
-```bash
-ssh -L 8080:127.0.0.1:8080 用户@服务器IP
-# 然后本机浏览器打开 http://localhost:8080
-```
-
-如需公网访问：`proxy` → 12 → 7 开启「公网访问开关」（绑 `0.0.0.0` 并放行 8080）；建议用完即关，或前置带 TLS 的反向代理。
-
-功能：服务状态、资源监控、在线重启、日志查看、订阅复制、节点二维码。
 
 ---
 
@@ -167,25 +144,19 @@ Proxy-Manager
 │   ├── dns.sh           DNS / AdGuard Home
 │   ├── system.sh        系统优化
 │   ├── security.sh      安全加固
-│   ├── web.sh           Nginx 订阅服务
-│   └── webpanel.sh      Web 管理面板部署
+│   └── web.sh           Nginx 订阅服务
 ├── configs/             参考模板
 ├── docs/                文档
-├── tests/
-│   └── check.sh         健康检查
-└── web/                 FastAPI 面板
-    ├── app.py / auth.py / service.py / qrgen.py
-    ├── requirements.txt
-    ├── templates/        index.html / login.html
-    └── static/           style.css
+└── tests/
+    └── check.sh         健康检查
 ```
 
 ---
 
 ## 🔐 安全说明
-- **不要上传** `data/node.env` 和 `data/web.env`：前者含 `PRIVATE_KEY` / `UUID`，后者含后台密码。
+- **不要上传** `data/node.env`：含 `PRIVATE_KEY` / `UUID`。
 - **订阅地址含随机令牌，等同节点凭证**，请勿公开分享；泄露后可重新生成订阅并更换 `SUB_TOKEN`。
-- 本仓库 `.gitignore` 已默认忽略 `data/web.env`、`data/node.env`、`web/venv/`、`__pycache__/`。
+- 本仓库 `.gitignore` 已默认忽略 `data/node.env`、`__pycache__/`。
 - 使用 SSH 密钥登录，仅开放必要端口，定期更新系统 / Xray / Mihomo / AdGuard Home。
 - 本项目不提供匿名性或绕过当地法律的保证；请遵守所在地法律与服务商规则。
 
@@ -199,7 +170,10 @@ Proxy-Manager
 - [x] **v3.2.3** 引导层：install.sh 自动安装 Web 面板并打印访问信息 / webpanel.sh 增加启动·停止·地址·凭据·重置密码管理项 / 主菜单 Web 入口标星
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
-- [ ] **v3.3** Web 认证跳过（端口53 + 分片）/ 多节点管理 / 流量统计 / API 管理
+- [x] **v3.3.0** Web 认证跳过（端口53 + 分片）/ **移除 Web 管理面板**（FastAPI 面板与 modules/webpanel.sh 已删除）/ 文档同步更新
+- [ ] 多节点管理 / 流量统计 / API 管理
+
+> 注：v3.3.0 起已彻底移除 Web 管理面板（FastAPI + webpanel.sh），v3.2 系列中与面板相关的条目仅作为历史记录保留，当前版本不再包含该组件。
 
 ---
 

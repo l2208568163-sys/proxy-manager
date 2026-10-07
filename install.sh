@@ -134,14 +134,6 @@ install -d -m 0700 "$INSTALL_DIR/data"
 install -d -m 0755 "$INSTALL_DIR/logs"
 
 ####################################################
-# Install Web Dashboard (auto, best-effort)
-####################################################
-if [[ -f "$INSTALL_DIR/modules/webpanel.sh" ]]; then
-  info "安装 Web 管理面板"
-  bash "$INSTALL_DIR/modules/webpanel.sh" install || warn "Web 面板安装失败，可稍后运行 proxy 主菜单 12 重新安装"
-fi
-
-####################################################
 # Install Command (dynamic path)
 ####################################################
 info "创建管理命令 /usr/local/bin/proxy"
@@ -160,7 +152,6 @@ find "$INSTALL_DIR" -type f -name '*.sh' -exec chmod 0755 {} +
 # Firewall
 ####################################################
 info "配置防火墙放行规则"
-# 8080（Web 面板）不放行：面板默认仅监听 127.0.0.1，公网访问需在面板菜单显式开启
 for p in 22 80 443; do
   ufw allow "${p}/tcp" >/dev/null 2>&1 || true
 done
@@ -181,21 +172,7 @@ echo "
 命令:   proxy
 版本:   $VERSION
 "
-if [[ -f "$INSTALL_DIR/data/web.env" ]]; then
-  # shellcheck disable=SC1090
-  source "$INSTALL_DIR/data/web.env"
-  IP="$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')"
-  echo
-  echo "账号: ${WEB_USER:-admin}（密码见 $INSTALL_DIR/data/web.env）"
-  if [[ "${WEB_BIND:-127.0.0.1}" == "0.0.0.0" ]]; then
-    echo "Web 控制台: http://$IP:8080（公网暴露中，建议加反向代理或仅 SSH 隧道访问）"
-  else
-    echo "Web 控制台: 默认仅本机监听 127.0.0.1:8080"
-    echo "  访问方式: ssh -L 8080:127.0.0.1:8080 用户@$IP 后打开 http://localhost:8080"
-    echo "  公网访问: proxy → 12 → 7 开启『公网访问开关』"
-  fi
-fi
 echo
-echo "下一步: 运行 proxy 打开主菜单；选 1 生成 Xray 节点、选 2 生成 Clash 订阅、选 12 管理 Web 面板"
+echo "下一步: 运行 proxy 打开主菜单；选 1 生成 Xray 节点、选 2 生成 Clash 订阅"
 echo "========================================
 "

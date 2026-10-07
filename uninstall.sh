@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #################################################
-# Proxy Manager v3.2 —— 完整卸载 (Clean Uninstall)
+# Proxy Manager v3.3.0 —— 完整卸载 (Clean Uninstall)
 #
 # 用法:
 #   bash uninstall.sh           普通卸载（保留 data/ 便于重装）
@@ -20,7 +20,7 @@ BASE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLEAN=0
 case "${1:-}" in
   --clean) CLEAN=1;;
-  --help|-h) echo "用法: bash uninstall.sh [--clean]"; echo "  --clean  额外删除 data/（节点密钥、后台密码）"; exit 0;;
+  --help|-h) echo "用法: bash uninstall.sh [--clean]"; echo "  --clean  额外删除 data/（节点密钥）"; exit 0;;
   "") ;;
   *) echo "未知参数: $1"; exit 1;;
 esac
@@ -33,7 +33,7 @@ fi
 
 echo
 echo "==================================="
-echo "  Proxy Manager 完整卸载 v3.2"
+echo "  Proxy Manager 完整卸载 v3.3.0"
 echo "==================================="
 warn "模式" "$([ "$CLEAN" -eq 1 ] && echo '完全清理（含 data/ 节点密钥）' || echo '普通卸载（保留 data/ 便于重装）')"
 echo
@@ -46,7 +46,7 @@ fi
 
 # ---- 1/11 停止并禁用服务 ----
 info "1/11" "停止并禁用相关服务"
-SERVICES=(xray mihomo AdGuardHome nginx proxy-web fail2ban)
+SERVICES=(xray mihomo AdGuardHome nginx fail2ban)
 for s in "${SERVICES[@]}"; do
   systemctl stop   "$s" 2>/dev/null || true
   systemctl disable "$s" 2>/dev/null || true
@@ -55,8 +55,7 @@ done
 # ---- 2/11 删除 systemd 单元 ----
 info "2/11" "删除 systemd 服务单元"
 rm -f /etc/systemd/system/xray.service /etc/systemd/system/xray.service.d \
-      /etc/systemd/system/mihomo.service \
-      /etc/systemd/system/proxy-web.service
+      /etc/systemd/system/mihomo.service
 systemctl daemon-reload 2>/dev/null || true
 
 # ---- 3/11 删除 Xray ----
@@ -86,25 +85,21 @@ fi
 rm -rf /var/www/html/clash
 nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || true
 
-# ---- 7/11 删除 Web 管理面板 ----
-info "7/11" "删除 Web 管理面板"
-rm -rf "$BASE_DIR/web" /var/log/proxy-manager
-
-# ---- 8/11 删除 DNS 解析器覆盖 ----
-info "8/11" "删除 DNS 解析器覆盖"
+# ---- 7/11 删除 DNS 解析器覆盖 ----
+info "7/11" "删除 DNS 解析器覆盖"
 rm -f /etc/systemd/resolved.conf.d/proxy-manager.conf
 systemctl restart systemd-resolved 2>/dev/null || true
 
-# ---- 9/11 清理防火墙规则 ----
-info "9/11" "清理防火墙规则"
+# ---- 8/11 清理防火墙规则 ----
+info "8/11" "清理防火墙规则"
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'Status: active'; then
-  for p in 443 80 7890 8080 3000 53; do
+  for p in 443 80 7890 3000 53; do
     ufw delete allow "${p}/tcp" 2>/dev/null || true
   done
 fi
 
-# ---- 10/11 恢复网络优化（BBR / FQ / TFO）----
-info "10/11" "恢复网络优化"
+# ---- 9/11 恢复网络优化（BBR / FQ / TFO）----
+info "9/11" "恢复网络优化"
 rm -f /etc/sysctl.d/99-proxy-manager.conf
 # 项目专属文件已删；若用户在 /etc/sysctl.conf 里手动留过 bbr/fq/tcp_fastopen，提示确认删除
 if grep -Eq 'bbr|fq|tcp_fastopen' /etc/sysctl.conf 2>/dev/null; then
@@ -117,15 +112,15 @@ if grep -Eq 'bbr|fq|tcp_fastopen' /etc/sysctl.conf 2>/dev/null; then
 fi
 sysctl --system >/dev/null 2>&1 || true
 
-# ---- 11/11 删除项目文件 / 命令 ----
-info "11/11" "删除项目文件与命令"
+# ---- 10/11 删除项目文件 / 命令 ----
+info "10/11" "删除项目文件与命令"
 rm -f /usr/local/bin/proxy
 if [[ "$CLEAN" -eq 1 ]]; then
   rm -rf "$BASE_DIR"
 else
   # 普通模式：删除除 data/ 以外的全部内容，保留节点数据便于重装
   find "$BASE_DIR" -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} +
-  warn "保留" "$BASE_DIR/data 已保留（含节点密钥与 web.env），重装时可直接复用"
+  warn "保留" "$BASE_DIR/data 已保留（含节点密钥），重装时可直接复用"
 fi
 
 # ---- 完全清理模式下，询问是否卸载我们装过的 apt 包 ----
