@@ -73,6 +73,14 @@ bash install.sh
 ```
 The installer: installs dependencies → deploys the project → creates the `proxy` command → creates the subscription dir `/var/www/html/clash`.
 
+### Backup & restore on re-install
+- If `/opt/proxy-manager` already exists, the installer first backs up `data/` to `/opt/proxy-manager-backup-<timestamp>`
+- It then lists **all** backups (this run's plus any left over) and asks whether to restore — pick a number, or `0` for a fresh config
+- Non-interactive runs (e.g. `curl ... | bash install.sh` with no TTY) auto-restore the **newest** backup so no node is lost
+- Skip the prompt with flags: `--restore` (restore newest immediately), `--no-restore` (never restore; backups are kept)
+
+> Restoring overwrites same-named files under `data/` (node keys get replaced) — check the number before pressing Enter.
+
 ---
 
 ## 🎮 Usage
@@ -85,7 +93,7 @@ proxy
 Main menu:
 ```
 ================================
- Proxy Manager v3.4.0
+ Proxy Manager v3.4.1
 ================================
  1. Xray Reality
  2. Clash Subscription
@@ -109,6 +117,12 @@ proxy --help      # help
 ```
 
 > **Uninstall**: `bash uninstall.sh` (keep `data/`) or `bash uninstall.sh --clean` (wipe everything including keys).
+
+### Backup handling at uninstall
+At the end of uninstall, every `/opt/proxy-manager-backup-*` is listed and you choose:
+- `a` = delete all　`n` = keep all (**default**)　`s` = delete selected numbers (e.g. `1 3`)
+
+Backups contain the node keys in `data/` — **deletion is irreversible**. Kept backups will be offered again on the next `install.sh`.
 
 ---
 
@@ -162,6 +176,7 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
+- [x] **v3.4.1** **interactive backup management**: on install, list this run's + leftover backups and let the user pick whether to restore (new `--restore` / `--no-restore`; non-interactive runs auto-restore newest) / at uninstall, ask about leftover backups (delete all / keep all / delete selected numbers); WiFi web-auth bypass switched to Vmess + mKCP (UDP + DNS disguise)
 - [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / **removed Mihomo client module** (modules/mihomo.sh deleted) / **renamed "Web-auth bypass" to "WiFi web-auth bypass" and made it a dedicated node** (own inbound, own keys and port, does not overwrite the main node; can release port 53) / main menu rearranged
 - [ ] Multi-node management / traffic stats / API management
 
