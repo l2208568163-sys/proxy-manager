@@ -49,6 +49,7 @@ It helps you deploy:
 - Port sits on gateway-allowed `53 / 67 / 68 / 123` and disguises traffic as **DNS** (mKCP header = `dns`). Hotspots allow UDP 53 DNS to redirect you to the auth page, so UDP works best (Reality is TCP-only and cannot pass)
 - Prefers **53**; if systemd-resolved's stub listener holds it, the script can release it (disable the stub, keep the machine's existing DNS, back up `/etc/resolv.conf` to `.bak.proxy-manager`); it **rolls back automatically** if DNS breaks
 - Parameters match 3x-ui defaults: MTU 1350 / TTI 50 / uplink·downlink 20 MB/s / congestion off / read·write buffer 2
+- **Core-version compatibility (important)**: since Xray **v26.2.6** the `kcpSettings.header/seed` fields are removed and DNS disguise moved to a `finalmask` UDP mask — and **the mask type name differs across core generations** (v26.2~26.3 use `header-dns`, v26.7+ use `mkcp-legacy`). The script adapts automatically: it tries `mkcp-legacy` first and falls back to `header-dns` when the core rejects it, so both generations work
 - Client: import the printed `vmess://` link with **v2rayN / v2rayNG (Xray core)**, enable "DNS proxy / anti-leak" in global mode. clash / sing-box handle UDP:53 disguise poorly, so this node is **not** put into the Clash subscription
 - Known limits: some providers (e.g. Alibaba Cloud) block port 53 for personal use; deep-inspection networks (SNI blocking / real DNS proxying) may still fail
 
@@ -93,7 +94,7 @@ proxy
 Main menu:
 ```
 ================================
- Proxy Manager v3.4.2
+ Proxy Manager v3.4.3
 ================================
  1. Xray Reality
  2. Clash Subscription
@@ -176,6 +177,7 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
+- [x] **v3.4.3** **fixed WiFi node failing to start on new Xray cores**: v26.2.6+ removed `kcpSettings.header/seed`; DNS disguise moved to a `finalmask` UDP mask, and the mask type name is incompatible across generations (v26.2~26.3 `header-dns` vs v26.7+ `mkcp-legacy`) — config writing now tries and falls back automatically (verified against a real v26.3.27 core)
 - [x] **v3.4.2** **fixed "program quits right after selecting a feature"**: main menu wraps every module with `|| module_failed` so a module error no longer kills the whole program and the error stays on screen; Xray menu 1/6/7, load_node_data, write_xray_config and restart_xray_and_wait now fail with readable errors and graceful returns instead of relying on set -e
 - [x] **v3.4.1** **interactive backup management**: on install, list this run's + leftover backups and let the user pick whether to restore (new `--restore` / `--no-restore`; non-interactive runs auto-restore newest) / at uninstall, ask about leftover backups (delete all / keep all / delete selected numbers); WiFi web-auth bypass switched to Vmess + mKCP (UDP + DNS disguise)
 - [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / **removed Mihomo client module** (modules/mihomo.sh deleted) / **renamed "Web-auth bypass" to "WiFi web-auth bypass" and made it a dedicated node** (own inbound, own keys and port, does not overwrite the main node; can release port 53) / main menu rearranged

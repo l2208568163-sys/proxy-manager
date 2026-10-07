@@ -21,28 +21,62 @@ inbound_json() {
 
 # WiFi 跳验证 inbound：Vmess + mKCP（UDP）+ DNS 伪装（对齐 3x-ui / 博客方案）。
 # 关键：走 UDP —— 热点为跳转 Web 认证页会放行 UDP 53 的 DNS 报文，Reality(TCP) 过不去、mKCP 能过。
-# 参数与 3x-ui 默认一致：MTU 1350 / TTI 50 / 上下行 20MB/s / buffer 2 / header=dns。
+# 参数与 3x-ui 默认一致：MTU 1350 / TTI 50 / 上下行 20MB/s / buffer 2。
+#
+# ⚠ Xray v26.2.6 起 kcpSettings 的 header / seed 字段被移除（旧配置直接报错起不来），
+#   DNS 伪装迁入 streamSettings.finalmask 的 UDP 掩码。且各代核心的掩码类型名不同（大坑）：
+#     v26.2.x ~ v26.3.x: {"type":"header-dns","settings":{"domain":"<域名>"}}   （Dns struct{Domain string}）
+#     v26.7.x+ / main:   {"type":"mkcp-legacy","settings":{"header":"dns","value":"<域名>"}}（header-* 已并入 mkcp-legacy）
+#   两代互不识别，write_xray_config 会先试 mkcp-legacy（文档现行格式），报 unknown config id 时
+#   自动换 header-dns 重试，两种核心都能适配。文档：
+#   https://xtls.github.io/config/transports/mkcp.html 与 /finalmask.html
 wifi_inbound_json() {
-  local port="$1" uuid="$2" domain="$3"
-  printf '{"listen":"0.0.0.0","port":%s,"protocol":"vmess","settings":{"clients":[{"id":"%s","alterId":0}]},"streamSettings":{"network":"kcp","security":"none","kcpSettings":{"mtu":1350,"tti":50,"uplinkCapacity":20,"downlinkCapacity":20,"congestion":false,"readBufferSize":2,"writeBufferSize":2,"header":{"type":"dns","domain":"%s"}}}}' \
-    "$port" "$uuid" "$domain"
+  local port="$1" uuid="$2" domain="$3" style="${4:-mkcp-legacy}" mask
+  if [[ "$style" == "mkcp-legacy" ]]; then
+    mask='{"type":"mkcp-legacy","settings":{"header":"dns","value":"'"$domain"'"}}'
+  else
+    mask='{"type":"header-dns","settings":{"domain":"'"$domain"'"}}'
+  fi
+  printf '{"listen":"0.0.0.0","port":%s,"protocol":"vmess","settings":{"clients":[{"id":"%s","alterId":0}]},"streamSettings":{"network":"kcp","security":"none","kcpSettings":{"mtu":1350,"tti":50,"uplinkCapacity":20,"downlinkCapacity":20,"congestion":false,"readBufferSize":2,"writeBufferSize":2},"finalmask":{"udp":[%s]}}}' \
+    "$port" "$uuid" "$mask"
 }
 
-# 依据 node.env 重建 Xray 配置：主节点与 WiFi 专属节点各自独立 inbound，互不覆盖
+# 写入配置并用 xray run -test 校验。WiFi DNS 伪装的掩码类型名随核心版本不同
+# （mkcp-legacy / header-dns，见 wifi_inbound_json 注释），此处自动适配：
+# 先按 mkcp-legacy 生成，校验报 unknown config id 时换 header-dns 重建再验，反之亦然。
 write_xray_config() {
-  local ins=()
+  local style test_err
+  for style in mkcp-legacy header-dns; do
+    if _write_xray_config_once "$style"; then
+      return 0
+    fi
+    # 只有「掩码类型名不识别」才值得换一种格式重试；其他错误重试无意义
+    test_err="$(xray run -test -c "$XRAY_CONFIG" 2>&1 || true)"
+    if [[ "$test_err" != *"unknown config id"* ]]; then
+      say "✗ Xray 配置校验失败（与 DNS 伪装格式无关），详情："
+      printf '%s\n' "$test_err" | tail -n 5
+      return 1
+    fi
+    say "提示: 当前 Xray 核心不识别 $style 伪装格式，切换为另一种格式重试..."
+  done
+  say "✗ mkcp-legacy 与 header-dns 两种伪装格式均被当前核心拒绝，请检查 Xray 版本。"
+  return 1
+}
+
+_write_xray_config_once() {
+  local style="$1" ins=() joined
   if [[ -n "${UUID:-}" && -n "${PRIVATE_KEY:-}" && -n "${PORT:-}" && -n "${SHORT_ID:-}" ]]; then
     ins+=("$(inbound_json "$PORT" "$UUID" "$PRIVATE_KEY" "$SHORT_ID")")
   fi
   if [[ -n "${WIFI_UUID:-}" && -n "${WIFI_PORT:-}" ]]; then
-    ins+=("$(wifi_inbound_json "$WIFI_PORT" "$WIFI_UUID" "${WIFI_DOMAIN:-$SNI}")")
+    ins+=("$(wifi_inbound_json "$WIFI_PORT" "$WIFI_UUID" "${WIFI_DOMAIN:-$SNI}" "$style")")
   fi
-  ((${#ins[@]})) || die "没有可写入的节点：主节点与 WiFi 节点信息均缺失。"
-  local joined; joined="$(IFS=,; echo "${ins[*]}")"
+  ((${#ins[@]})) || { say "没有可写入的节点：主节点与 WiFi 节点信息均缺失。"; return 1; }
+  joined="$(IFS=,; echo "${ins[*]}")"
   install -d -m 0755 "$(dirname "$XRAY_CONFIG")"
   printf '{"log":{"loglevel":"warning"},"inbounds":[%s],"outbounds":[{"protocol":"freedom"}]}\n' "$joined" >"$XRAY_CONFIG"
   # 配置校验失败必须显式报错返回（条件上下文里 set -e 不会兜底，静默继续会用坏配置重启）
-  xray run -test -c "$XRAY_CONFIG" >/dev/null || { say "✗ 生成的 Xray 配置未通过校验：$XRAY_CONFIG（可运行 xray run -test -c $XRAY_CONFIG 查看详情）"; return 1; }
+  xray run -test -c "$XRAY_CONFIG" >/dev/null 2>&1 || return 1
 }
 
 # 写入新配置后必须 (re)start，不能只靠 enable --now：服务已在运行时它是 no-op，
