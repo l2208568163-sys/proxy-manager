@@ -55,6 +55,11 @@ wifi_inbound_json() {
     "$port" "$uuid" "$masks"
 }
 
+# WiFi DNS 伪装域名：必须与客户端一致 —— DNS 头长度随域名变化，两端域名不同则每包错位、全部丢弃。
+# v2rayN/v2rayNG 对 type=dns 链接不传 host 域名（仅 ws/grpc 使用 host），客户端最终用核心默认
+# www.baidu.com（Xray kcp header DNS 的内置默认），故服务端默认必须同为 www.baidu.com。
+WIFI_DNS_DOMAIN_DEFAULT="www.baidu.com"
+
 # 写入配置并用 xray run -test 校验。WiFi DNS 伪装的掩码类型名随核心版本不同
 # （mkcp-legacy / header-dns，见 wifi_inbound_json 注释），此处自动适配：
 # 先按 mkcp-legacy 生成，校验报 unknown config id 时换 header-dns 重建再验，反之亦然。
@@ -210,7 +215,14 @@ install_wifi_node() {
   command -v xray >/dev/null 2>&1 || { say "✗ 未找到 xray 命令，无法继续。请先运行 Xray 菜单 1 安装主节点。"; return 1; }
   server="$(detect_public_ip)" || { say "✗ 无法获取公网 IPv4（api.ipify.org / ifconfig.me / ipv4.icanhazip.com 均不可达）。请检查服务器出网后重试。"; return 1; }
   if [[ -f "$NODE_FILE" ]]; then source "$NODE_FILE" 2>/dev/null || true; fi
-  domain="${WIFI_DOMAIN:-$SNI}"
+  # DNS 伪装域名：两端必须一致（DNS 头长度随域名变化）。v2rayN/v2rayNG 不把链接 host 传给
+  # mkcp 掩码，客户端实际用核心默认 www.baidu.com —— 服务端跟随该默认；
+  # 旧版本写入的 WIFI_DOMAIN（=SNI=www.cloudflare.com）会被纠正为默认值，用户自定义值保留。
+  if [[ -z "${WIFI_DOMAIN:-}" || "${WIFI_DOMAIN}" == "$SNI" ]]; then
+    domain="$WIFI_DNS_DOMAIN_DEFAULT"
+  else
+    domain="$WIFI_DOMAIN"
+  fi
   # 已存在 WiFi 节点且端口仍在 UDP 监听 → 复用，避免重跑时把 Xray 自己占的 53 误判为“被占用”而漂移
   if [[ "${WIFI:-0}" == "1" && -n "${WIFI_PORT:-}" ]] \
      && ss -lnup 2>/dev/null | grep -w "${WIFI_PORT}" | grep -qi xray; then

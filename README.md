@@ -50,6 +50,7 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 端口落在网关默认放行的 `53 / 67 / 68 / 123`，并把流量**伪装成 DNS**。热点为跳转 Web 认证页会放行 UDP 53 的 DNS 报文，故走 UDP 最有效（Reality 只能跑 TCP，过不去）
 - 优先使用 **53**；若被 systemd-resolved 的 stub 监听占用，可自动释放（关闭 stub 并改用静态 DNS，**保留机器原有 DNS**，原 `/etc/resolv.conf` 备份为 `.bak.proxy-manager`）；释放后若 DNS 不可用会**自动回滚**
 - 参数对齐 3x-ui 默认：MTU 1350 / TTI 50 / 上下行 20 MB/s / congestion 关 / read·write buffer 2
+- **DNS 伪装域名固定 `www.baidu.com`（两端必须一致）**：DNS 头长度随域名变化，两端不同则每包错位。v2rayN/v2rayNG 对 `type=dns` 链接**不把 host 传给掩码**，客户端实际用核心默认 `www.baidu.com`，服务端因此默认跟随；节点配置里的 `WIFI_DOMAIN` 可自定义，但必须与客户端一致
 - **核心版本兼容（重要）**：Xray **v26.2.6 起**移除了 `kcpSettings.header/seed`，DNS 伪装改由 `finalmask` 的 UDP 掩码实现。且旧版 `header:dns` 的线上格式是「DNS 头 + XOR 混淆」**双层叠加**，两代核心的掩码类型名也不同（v26.2~26.3 用 `header-dns`+`mkcp-original`，v26.7+ 用 `mkcp-legacy`）。脚本写入配置时自动适配：先用 `mkcp-legacy` 试校验，核心不识别就换 `header-dns` 双层组合重试（已用 26.3.27 服务端 + 26.9.9 客户端真实互联验证）
 - 客户端：用 **v2rayN / v2rayNG（Xray 核心）** 导入输出的 `vmess://` 链接，开启“DNS 代理 / 防泄漏”走全局。clash / sing-box 对 UDP:53 伪装支持不佳，故该节点**不进 Clash 订阅**
 - 已知限制：阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境仍可能失效
