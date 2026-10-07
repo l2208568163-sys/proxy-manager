@@ -12,19 +12,18 @@ require_root
 svc() { if service_is_active "$1" 2>/dev/null; then printf '运行中'; else printf '未运行'; fi; }
 while true; do
   clear; say "================================"; say " 代理管理器 Proxy Manager v$(<"$BASE_DIR/VERSION")"; say "================================"
-  say "服务状态 — Xray:$(svc xray) | Mihomo:$(svc mihomo) | AdGuardDNS:$(svc AdGuardHome) | Nginx:$(svc nginx)"
-  say "1. Xray Reality 节点"; say "2. Clash 订阅"; say "3. Mihomo 客户端"; say "4. DNS 管理"; say "5. 系统优化"; say "6. 安全加固"; say "7. Web 订阅服务"; say "8. 健康检查"; say "9. 查看节点信息"; say "10. 更新程序"; say "11. 卸载 Proxy Manager"; say "0. 退出"
+  say "服务状态 — Xray:$(svc xray) | Mihomo:$(svc mihomo) | Nginx:$(svc nginx)"
+  say "1. Xray Reality 节点"; say "2. Clash 订阅"; say "3. Mihomo 客户端"; say "4. 系统优化"; say "5. 安全加固"; say "6. Web 订阅服务"; say "7. 健康检查"; say "8. 查看节点信息"; say "9. 更新程序"; say "10. 卸载 Proxy Manager"; say "0. 退出"
   read -r -p "请选择: " c
   case "$c" in
     1) "$BASE_DIR/modules/xray.sh";;
     2) "$BASE_DIR/modules/subscription.sh";;
     3) "$BASE_DIR/modules/mihomo.sh";;
-    4) "$BASE_DIR/modules/dns.sh";;
-    5) "$BASE_DIR/modules/system.sh";;
-    6) "$BASE_DIR/modules/security.sh";;
-    7) "$BASE_DIR/modules/web.sh";;
-    8) "$BASE_DIR/tests/check.sh"; read -r -p "请按回车继续..." _;;
-    9) load_node_data; say "订阅地址: ${SUBSCRIPTION_URL:-（尚未生成，请运行主菜单 2 重新生成订阅）}"; say "$VLESS_URI"; read -r -p "请按回车继续..." _;;
-    10) "$BASE_DIR/update.sh"; read -r -p "请按回车继续..." _;; 11) exec "$BASE_DIR/uninstall.sh";; 0) exit;; *) say "无效选择。";;
+    4) "$BASE_DIR/modules/system.sh";;
+    5) "$BASE_DIR/modules/security.sh";;
+    6) "$BASE_DIR/modules/web.sh";;
+    7) "$BASE_DIR/tests/check.sh"; read -r -p "请按回车继续..." _;;
+    8) load_node_data; say "订阅地址: ${SUBSCRIPTION_URL:-（尚未生成，请运行主菜单 2 重新生成订阅）}"; say "$VLESS_URI"; read -r -p "请按回车继续..." _;;
+    9) "$BASE_DIR/update.sh"; read -r -p "请按回车继续..." _;; 10) exec "$BASE_DIR/uninstall.sh";; 0) exit;; *) say "无效选择。";;
   esac
 done

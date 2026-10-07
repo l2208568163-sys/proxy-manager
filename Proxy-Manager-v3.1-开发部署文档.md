@@ -1,15 +1,16 @@
-# Proxy Manager v3.1 开发部署文档
+# Proxy Manager 开发部署文档（v3.1 历史版）
+
+> 说明：本文档为 v3.1 时期的开发部署说明，仅作历史参考。后续版本已移除 Web 管理面板（v3.3.0）与整个 DNS 模块（含 AdGuard Home，v3.4.0），modules/dns.sh 已删除。
 
 ## 项目简介
 
-Proxy Manager v3.1 是一个基于 Ubuntu 的代理服务自动化管理项目。
+Proxy Manager 是一个基于 Ubuntu 的代理服务自动化管理项目。
 
 目标：
 
 -   Xray Reality 节点自动部署
 -   Mihomo(Clash Meta)管理
 -   Clash URL订阅生成
--   DNS优化
 -   BBR/TCP网络优化
 -   GitHub版本管理
 
@@ -27,7 +28,6 @@ proxy-manager-v3/
 │   ├── xray.sh
 │   ├── subscription.sh
 │   ├── mihomo.sh
-│   ├── dns.sh
 │   └── system.sh
 
 └── data/
@@ -112,13 +112,9 @@ Clash Verge:
 
 ------------------------------------------------------------------------
 
-# DNS
+# DNS（已移除）
 
-支持：
-
--   AdGuard Home
--   DoH
--   DNS优化
+> 注：DNS 模块（AdGuard Home + 系统 DNS 优化，原 modules/dns.sh）已在 v3.4.0 移除，本段仅供历史参考。
 
 ------------------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #################################################
-# Proxy Manager v3.3.0 —— 完整卸载 (Clean Uninstall)
+# Proxy Manager v3.4.0 —— 完整卸载 (Clean Uninstall)
 #
 # 用法:
 #   bash uninstall.sh           普通卸载（保留 data/ 便于重装）
@@ -33,7 +33,7 @@ fi
 
 echo
 echo "==================================="
-echo "  Proxy Manager 完整卸载 v3.3.0"
+echo "  Proxy Manager 完整卸载 v3.4.0"
 echo "==================================="
 warn "模式" "$([ "$CLEAN" -eq 1 ] && echo '完全清理（含 data/ 节点密钥）' || echo '普通卸载（保留 data/ 便于重装）')"
 echo
@@ -44,37 +44,30 @@ if [[ "$CONFIRM" != "yes" ]]; then
   exit 0
 fi
 
-# ---- 1/11 停止并禁用服务 ----
-info "1/11" "停止并禁用相关服务"
-SERVICES=(xray mihomo AdGuardHome nginx fail2ban)
+# ---- 1/8 停止并禁用服务 ----
+info "1/8" "停止并禁用相关服务"
+SERVICES=(xray mihomo nginx fail2ban)
 for s in "${SERVICES[@]}"; do
   systemctl stop   "$s" 2>/dev/null || true
   systemctl disable "$s" 2>/dev/null || true
 done
 
-# ---- 2/11 删除 systemd 单元 ----
-info "2/11" "删除 systemd 服务单元"
+# ---- 2/8 删除 systemd 单元 ----
+info "2/8" "删除 systemd 服务单元"
 rm -f /etc/systemd/system/xray.service /etc/systemd/system/xray.service.d \
       /etc/systemd/system/mihomo.service
 systemctl daemon-reload 2>/dev/null || true
 
-# ---- 3/11 删除 Xray ----
-info "3/11" "删除 Xray"
+# ---- 3/8 删除 Xray ----
+info "3/8" "删除 Xray"
 rm -rf /usr/local/bin/xray /usr/local/etc/xray
 
-# ---- 4/11 删除 Mihomo ----
-info "4/11" "删除 Mihomo"
+# ---- 4/8 删除 Mihomo ----
+info "4/8" "删除 Mihomo"
 rm -rf /usr/local/bin/mihomo /etc/mihomo /var/log/mihomo
 
-# ---- 5/11 删除 AdGuard Home ----
-info "5/11" "删除 AdGuard Home"
-if [[ -x /opt/AdGuardHome/AdGuardHome ]]; then
-  /opt/AdGuardHome/AdGuardHome -s uninstall 2>/dev/null || true
-fi
-rm -rf /opt/AdGuardHome /etc/AdGuardHome
-
-# ---- 6/11 删除 Nginx 订阅站点 ----
-info "6/11" "删除 Nginx 订阅配置"
+# ---- 5/8 删除 Nginx 订阅站点 ----
+info "5/8" "删除 Nginx 订阅配置"
 rm -f /etc/nginx/sites-enabled/proxy-manager.conf \
       /etc/nginx/sites-available/proxy-manager.conf
 # proxy-manager.conf 曾接管 :80 default_server，这里恢复发行版默认站点
@@ -85,21 +78,16 @@ fi
 rm -rf /var/www/html/clash
 nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || true
 
-# ---- 7/11 删除 DNS 解析器覆盖 ----
-info "7/11" "删除 DNS 解析器覆盖"
-rm -f /etc/systemd/resolved.conf.d/proxy-manager.conf
-systemctl restart systemd-resolved 2>/dev/null || true
-
-# ---- 8/11 清理防火墙规则 ----
-info "8/11" "清理防火墙规则"
+# ---- 6/8 清理防火墙规则 ----
+info "6/8" "清理防火墙规则"
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'Status: active'; then
-  for p in 443 80 7890 3000 53; do
+  for p in 443 80 7890; do
     ufw delete allow "${p}/tcp" 2>/dev/null || true
   done
 fi
 
-# ---- 9/11 恢复网络优化（BBR / FQ / TFO）----
-info "9/11" "恢复网络优化"
+# ---- 7/8 恢复网络优化（BBR / FQ / TFO）----
+info "7/8" "恢复网络优化"
 rm -f /etc/sysctl.d/99-proxy-manager.conf
 # 项目专属文件已删；若用户在 /etc/sysctl.conf 里手动留过 bbr/fq/tcp_fastopen，提示确认删除
 if grep -Eq 'bbr|fq|tcp_fastopen' /etc/sysctl.conf 2>/dev/null; then
@@ -112,8 +100,8 @@ if grep -Eq 'bbr|fq|tcp_fastopen' /etc/sysctl.conf 2>/dev/null; then
 fi
 sysctl --system >/dev/null 2>&1 || true
 
-# ---- 10/11 删除项目文件 / 命令 ----
-info "10/11" "删除项目文件与命令"
+# ---- 8/8 删除项目文件 / 命令 ----
+info "8/8" "删除项目文件与命令"
 rm -f /usr/local/bin/proxy
 if [[ "$CLEAN" -eq 1 ]]; then
   rm -rf "$BASE_DIR"

@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/l2208568163-sys/proxy-manager"><img src="https://img.shields.io/github/stars/l2208568163-sys/proxy-manager" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/l2208568163-sys/proxy-manager" alt="GitHub license"></a>
-  <img src="https://img.shields.io/badge/version-3.3.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.4.0-blue" alt="Version">
 </p>
 
 <p align="center">
@@ -25,7 +25,6 @@ It helps you deploy:
 - **Xray Reality** nodes (VLESS + Reality + Vision)
 - **Mihomo** (Clash Meta) client
 - **Clash URL subscription** (HTTP subscription file)
-- **AdGuard Home** DNS
 - **BBR** network optimization
 
 > Goal: deploy and manage a server proxy environment with one command.
@@ -49,10 +48,6 @@ It helps you deploy:
 ### 🚀 Mihomo
 - TUN mode, Fake-IP DNS, auto-routing, rule-based split
 - Installs the core first, then validates the subscription URL before starting
-
-### 🛡 DNS Optimization
-- System DNS (Cloudflare + opportunistic DoT)
-- Optional AdGuard Home (DoH / DNS cache)
 
 ### ⚡ System Optimization
 - BBR, TCP Fast Open, FQ queue
@@ -87,19 +82,18 @@ proxy
 Main menu:
 ```
 ================================
- Proxy Manager v3.3.0
+ Proxy Manager v3.4.0
 ================================
  1. Xray Reality
  2. Clash Subscription
  3. Mihomo
- 4. DNS
- 5. System Optimization
- 6. Security Hardening
- 7. Web Subscription Service
- 8. Health Check
- 9. Node Information
-10. Update
-11. Uninstall
+ 4. System Optimization
+ 5. Security Hardening
+ 6. Web Subscription Service
+ 7. Health Check
+ 8. Node Information
+ 9. Update
+10. Uninstall
  0. Exit
 ```
 
@@ -138,7 +132,6 @@ Proxy-Manager
 │   ├── xray.sh          Xray Reality
 │   ├── subscription.sh  Clash subscription
 │   ├── mihomo.sh        Mihomo client
-│   ├── dns.sh           DNS / AdGuard Home
 │   ├── system.sh        system optimization
 │   ├── security.sh      security hardening
 │   └── web.sh           Nginx subscription service
@@ -154,7 +147,7 @@ Proxy-Manager
 - **Never upload** `data/node.env`: it holds `PRIVATE_KEY` / `UUID`.
 - **The subscription URL contains a random token and is a node credential** — do not share it publicly. If leaked, regenerate the subscription and rotate `SUB_TOKEN`.
 - This repo's `.gitignore` already excludes `data/node.env`, `__pycache__/`.
-- Use SSH keys, open only required ports, and keep system / Xray / Mihomo / AdGuard Home updated.
+- Use SSH keys, open only required ports, and keep system / Xray / Mihomo updated.
 - This project gives no guarantee of anonymity or circumvention of local laws; comply with applicable laws and provider rules.
 
 ---
@@ -168,9 +161,10 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
+- [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / main menu rearranged (DNS entry removed)
 - [ ] Multi-node management / traffic stats / API management
 
-> Note: as of v3.3.0 the Web dashboard (FastAPI + webpanel.sh) is fully removed; the v3.2-series entries referencing it are kept only as historical changelog and are no longer part of the product.
+> Note: as of v3.3.0 the Web dashboard (FastAPI + webpanel.sh) is fully removed; as of **v3.4.0 the entire DNS module (AdGuard Home + system DNS optimization, modules/dns.sh) is also removed** and the main menu is rearranged accordingly. The v3.2-series entries referencing the dashboard are kept only as historical changelog and are no longer part of the product.
 
 ---
 
