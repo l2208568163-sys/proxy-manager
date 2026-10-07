@@ -50,7 +50,8 @@ It helps you deploy:
 - Prefers **53**; if systemd-resolved's stub listener holds it, the script can release it (disable the stub and switch to static DNS, backing up `/etc/resolv.conf` to `.bak.proxy-manager`)
 - The subscription auto-adds `fragment` (splits the TLS ClientHello) for this node against shallow SNI/DPI
 - Use **v2rayN / v2rayNG (Xray core)** with "DNS proxy / anti-leak" enabled in global mode; clash / sing-box handle port-53 disguise poorly
-- Known limits: some providers (e.g. Alibaba Cloud) block port 53 for personal use; deep-inspection networks (SNI blocking / real DNS proxying) may still fail
+- Known limits: **Reality is TCP-only**, so this node is `TCP:53`; some hotspots only allow UDP 53 (real DNS datagrams) and will still fail. Some providers (e.g. Alibaba Cloud) block port 53 for personal use; deep-inspection networks (SNI blocking / real DNS proxying) may still fail
+- Troubleshooting: Reality's dest needs DNS. If `/etc/resolv.conf` becomes unreachable after releasing port 53, the node "listens but never connects"; the script self-checks DNS and rolls back automatically
 
 ### ⚡ System Optimization
 - BBR, TCP Fast Open, FQ queue

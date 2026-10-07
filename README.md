@@ -51,7 +51,8 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 优先使用 **53**；若被 systemd-resolved 的 stub 监听占用，可自动释放（关闭 stub 并改用静态 DNS，原 `/etc/resolv.conf` 备份为 `.bak.proxy-manager`）
 - 订阅自动为该节点加入 `fragment` 分片（拆分 TLS ClientHello）以抗浅层 SNI/DPI
 - 客户端请用 **v2rayN / v2rayNG（Xray 核心）** 并开启“DNS 代理 / 防泄漏”走全局；clash / sing-box 对 53 端口伪装支持不佳
-- 已知限制：阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境仍可能失效
+- 已知限制：**Reality 只能跑 TCP**，故本节点是 `TCP:53`；部分热点只放行 UDP 53（真正的 DNS 报文），那种环境仍会失效。阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境同样可能失效
+- 排错要点：Reality 的 dest 依赖 DNS 解析，若释放 53 后 `/etc/resolv.conf` 不可达，节点会“端口在监听却连不上”；脚本会自动自检并在 DNS 不可用时回滚
 
 ### ⚡ 系统优化
 - BBR、TCP Fast Open、FQ 队列
