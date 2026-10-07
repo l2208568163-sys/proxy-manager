@@ -50,7 +50,7 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 端口落在网关默认放行的 `53 / 67 / 68 / 123`，并把流量**伪装成 DNS**。热点为跳转 Web 认证页会放行 UDP 53 的 DNS 报文，故走 UDP 最有效（Reality 只能跑 TCP，过不去）
 - 优先使用 **53**；若被 systemd-resolved 的 stub 监听占用，可自动释放（关闭 stub 并改用静态 DNS，**保留机器原有 DNS**，原 `/etc/resolv.conf` 备份为 `.bak.proxy-manager`）；释放后若 DNS 不可用会**自动回滚**
 - 参数对齐 3x-ui 默认：MTU 1350 / TTI 50 / 上下行 20 MB/s / congestion 关 / read·write buffer 2
-- **核心版本兼容（重要）**：Xray **v26.2.6 起**移除了 `kcpSettings.header/seed`，DNS 伪装改由 `finalmask` 的 UDP 掩码实现，且**各代核心类型名不同**（v26.2~26.3 用 `header-dns`，v26.7+ 用 `mkcp-legacy`）。脚本写入配置时自动适配：先用 `mkcp-legacy` 试校验，核心不识别就换 `header-dns` 重试，两种核心都能用
+- **核心版本兼容（重要）**：Xray **v26.2.6 起**移除了 `kcpSettings.header/seed`，DNS 伪装改由 `finalmask` 的 UDP 掩码实现。且旧版 `header:dns` 的线上格式是「DNS 头 + XOR 混淆」**双层叠加**，两代核心的掩码类型名也不同（v26.2~26.3 用 `header-dns`+`mkcp-original`，v26.7+ 用 `mkcp-legacy`）。脚本写入配置时自动适配：先用 `mkcp-legacy` 试校验，核心不识别就换 `header-dns` 双层组合重试（已用 26.3.27 服务端 + 26.9.9 客户端真实互联验证）
 - 客户端：用 **v2rayN / v2rayNG（Xray 核心）** 导入输出的 `vmess://` 链接，开启“DNS 代理 / 防泄漏”走全局。clash / sing-box 对 UDP:53 伪装支持不佳，故该节点**不进 Clash 订阅**
 - 已知限制：阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境仍可能失效
 
@@ -181,7 +181,7 @@ Proxy-Manager
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
 - [x] **v3.3.0** Web 认证跳过（端口53 + 分片）/ **移除 Web 管理面板**（FastAPI 面板与 modules/webpanel.sh 已删除）/ 文档同步更新
-- [x] **v3.4.3** **修复 WiFi 节点在新版 Xray 上无法启动**：v26.2.6+ 移除了 `kcpSettings.header/seed`，DNS 伪装迁移到 `finalmask` UDP 掩码；且 v26.2~26.3（`header-dns`）与 v26.7+（`mkcp-legacy`）类型名互不兼容，写入配置时自动试错适配（已用 v26.3.27 真实核心验证）
+- [x] **v3.4.3** **修复 WiFi 节点在新版 Xray 上无法启动 / 连不通**：v26.2.6+ 移除了 `kcpSettings.header/seed`，DNS 伪装迁移到 `finalmask` UDP 掩码；旧格式实为「DNS 头 + XOR」双层，且 v26.2~26.3（`header-dns`+`mkcp-original`）与 v26.7+（`mkcp-legacy`）类型名互不兼容，写入配置时自动试错适配（已用 26.3.27 服务端 + 26.9.9 客户端真实互联验证 HTTP 200）
 - [x] **v3.4.2** **修复「选完功能整个程序退出」**：主菜单以 `|| module_failed` 包裹各模块，模块出错不再连带退出、错误信息暂停展示；Xray 菜单 1/6/7、load_node_data、write_xray_config、restart_xray_and_wait 全面改为「可读错误 + 优雅返回」，不再依赖 set -e 兜底
 - [x] **v3.4.1** **备份可交互管理**：安装时列出本次+历史备份由用户选择是否恢复（新增 `--restore` / `--no-restore`，非交互自动恢复最新）/ 卸载收尾询问历史备份「全部删除 / 全部保留 / 按编号删除」；WiFi 跳验证改用 Vmess + mKCP（UDP + DNS 伪装）
 - [x] **v3.4.0** **移除整个 DNS 模块**（AdGuard Home + 系统 DNS 优化，modules/dns.sh 已删除）/ **移除 Mihomo 客户端模块**（modules/mihomo.sh 已删除）/ **“Web 认证跳过”更名为「WiFi web 跳验证」并改为独立专属节点**（独立 inbound、独立密钥与端口，不覆盖主节点；可自动释放 53）/ 主菜单重排

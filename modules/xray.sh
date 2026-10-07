@@ -23,22 +23,36 @@ inbound_json() {
 # 关键：走 UDP —— 热点为跳转 Web 认证页会放行 UDP 53 的 DNS 报文，Reality(TCP) 过不去、mKCP 能过。
 # 参数与 3x-ui 默认一致：MTU 1350 / TTI 50 / 上下行 20MB/s / buffer 2。
 #
-# ⚠ Xray v26.2.6 起 kcpSettings 的 header / seed 字段被移除（旧配置直接报错起不来），
-#   DNS 伪装迁入 streamSettings.finalmask 的 UDP 掩码。且各代核心的掩码类型名不同（大坑）：
-#     v26.2.x ~ v26.3.x: {"type":"header-dns","settings":{"domain":"<域名>"}}   （Dns struct{Domain string}）
-#     v26.7.x+ / main:   {"type":"mkcp-legacy","settings":{"header":"dns","value":"<域名>"}}（header-* 已并入 mkcp-legacy）
-#   两代互不识别，write_xray_config 会先试 mkcp-legacy（文档现行格式），报 unknown config id 时
-#   自动换 header-dns 重试，两种核心都能适配。文档：
-#   https://xtls.github.io/config/transports/mkcp.html 与 /finalmask.html
+# ⚠⚠ Xray v26.1.31+ 移除了 kcpSettings 的 header/seed，DNS 伪装迁入 streamSettings.finalmask 的
+#    UDP 掩码，且有两层语义与世代差异（以下均经真实核心互联实测/源码考据）：
+#
+#   1) 旧版 header:{type:dns} 的线上格式是「DNS 头 + fnv/XOR 混淆」双层叠加：
+#      旧版 GetSecurity() 在未配置 seed 时默认返回 SimpleAuthenticator（fnv+XOR），
+#      header 只是额外叠加的伪装头。所以正确复刻必须两层都配。
+#
+#   2) 两代核心的掩码类型名不同（26.9.9 已删除 header-dns/mkcp-original，只认 mkcp-legacy）：
+#      - v26.2.x ~ v26.3.x: {"type":"header-dns","settings":{"domain":域名}} + {"type":"mkcp-original"}
+#      - v26.7.x+ / main:   {"type":"mkcp-legacy","settings":{"header":"dns","value":域名}}
+#                           + {"type":"mkcp-legacy"}（空 = 旧默认 XOR）
+#
+#   3) inbound 与 outbound 的数组封装方向相反：v2rayN(26.9.9) 客户端生成的 outbound 数组是
+#      [ {空=XOR}, {dns} ]，则 inbound 服务端必须用逆序 [ {dns}, {空=XOR} ]（已用
+#      26.3.27 服务端 + 26.9.9 客户端真实互联实测：逆序 HTTP 200 互通，同序 invalid auth）。
+#      ⚠ 26.7+/26.9.x 服务端的 mkcp-legacy 组合尚未找到与 v2rayN 客户端互通的实测组合
+#        （多种排列均 invalid auth / 超时，核心行为在 26.9 有变化），如升级核心后失效请反馈。
+#
+#   文档：https://xtls.github.io/config/transports/mkcp.html 与 /finalmask.html
 wifi_inbound_json() {
-  local port="$1" uuid="$2" domain="$3" style="${4:-mkcp-legacy}" mask
+  local port="$1" uuid="$2" domain="$3" style="${4:-mkcp-legacy}" masks
   if [[ "$style" == "mkcp-legacy" ]]; then
-    mask='{"type":"mkcp-legacy","settings":{"header":"dns","value":"'"$domain"'"}}'
+    # 26.7+：mkcp-legacy(header=dns,value=域名) ≙ header-dns；mkcp-legacy(空) ≙ mkcp-original
+    masks='[{"type":"mkcp-legacy","settings":{"header":"dns","value":"'"$domain"'"}},{"type":"mkcp-legacy"}]'
   else
-    mask='{"type":"header-dns","settings":{"domain":"'"$domain"'"}}'
+    # 26.2~26.3：header-dns + mkcp-original 双层，顺序为 v2rayN 客户端数组的逆序（实测互通）
+    masks='[{"type":"header-dns","settings":{"domain":"'"$domain"'"}},{"type":"mkcp-original"}]'
   fi
-  printf '{"listen":"0.0.0.0","port":%s,"protocol":"vmess","settings":{"clients":[{"id":"%s","alterId":0}]},"streamSettings":{"network":"kcp","security":"none","kcpSettings":{"mtu":1350,"tti":50,"uplinkCapacity":20,"downlinkCapacity":20,"congestion":false,"readBufferSize":2,"writeBufferSize":2},"finalmask":{"udp":[%s]}}}' \
-    "$port" "$uuid" "$mask"
+  printf '{"listen":"0.0.0.0","port":%s,"protocol":"vmess","settings":{"clients":[{"id":"%s","alterId":0}]},"streamSettings":{"network":"kcp","security":"none","kcpSettings":{"mtu":1350,"tti":50,"uplinkCapacity":20,"downlinkCapacity":20,"congestion":false,"readBufferSize":2,"writeBufferSize":2},"finalmask":{"udp":%s}}}' \
+    "$port" "$uuid" "$masks"
 }
 
 # 写入配置并用 xray run -test 校验。WiFi DNS 伪装的掩码类型名随核心版本不同
