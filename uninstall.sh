@@ -44,30 +44,30 @@ if [[ "$CONFIRM" != "yes" ]]; then
   exit 0
 fi
 
-# ---- 1/8 停止并禁用服务 ----
-info "1/8" "停止并禁用相关服务"
+# ---- 1/9 停止并禁用服务 ----
+info "1/9" "停止并禁用相关服务"
 SERVICES=(xray mihomo nginx fail2ban)
 for s in "${SERVICES[@]}"; do
   systemctl stop   "$s" 2>/dev/null || true
   systemctl disable "$s" 2>/dev/null || true
 done
 
-# ---- 2/8 删除 systemd 单元 ----
-info "2/8" "删除 systemd 服务单元"
+# ---- 2/9 删除 systemd 单元 ----
+info "2/9" "删除 systemd 服务单元"
 rm -f /etc/systemd/system/xray.service /etc/systemd/system/xray.service.d \
       /etc/systemd/system/mihomo.service
 systemctl daemon-reload 2>/dev/null || true
 
-# ---- 3/8 删除 Xray ----
-info "3/8" "删除 Xray"
+# ---- 3/9 删除 Xray ----
+info "3/9" "删除 Xray"
 rm -rf /usr/local/bin/xray /usr/local/etc/xray
 
-# ---- 4/8 删除 Mihomo ----
-info "4/8" "删除 Mihomo"
+# ---- 4/9 删除 Mihomo ----
+info "4/9" "删除 Mihomo"
 rm -rf /usr/local/bin/mihomo /etc/mihomo /var/log/mihomo
 
-# ---- 5/8 删除 Nginx 订阅站点 ----
-info "5/8" "删除 Nginx 订阅配置"
+# ---- 5/9 删除 Nginx 订阅站点 ----
+info "5/9" "删除 Nginx 订阅配置"
 rm -f /etc/nginx/sites-enabled/proxy-manager.conf \
       /etc/nginx/sites-available/proxy-manager.conf
 # proxy-manager.conf 曾接管 :80 default_server，这里恢复发行版默认站点
@@ -78,16 +78,16 @@ fi
 rm -rf /var/www/html/clash
 nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || true
 
-# ---- 6/8 清理防火墙规则 ----
-info "6/8" "清理防火墙规则"
+# ---- 6/9 清理防火墙规则 ----
+info "6/9" "清理防火墙规则"
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'Status: active'; then
   for p in 443 80 7890; do
     ufw delete allow "${p}/tcp" 2>/dev/null || true
   done
 fi
 
-# ---- 7/8 恢复网络优化（BBR / FQ / TFO）----
-info "7/8" "恢复网络优化"
+# ---- 7/9 恢复网络优化（BBR / FQ / TFO）----
+info "7/9" "恢复网络优化"
 rm -f /etc/sysctl.d/99-proxy-manager.conf
 # 项目专属文件已删；若用户在 /etc/sysctl.conf 里手动留过 bbr/fq/tcp_fastopen，提示确认删除
 if grep -Eq 'bbr|fq|tcp_fastopen' /etc/sysctl.conf 2>/dev/null; then
@@ -100,8 +100,16 @@ if grep -Eq 'bbr|fq|tcp_fastopen' /etc/sysctl.conf 2>/dev/null; then
 fi
 sysctl --system >/dev/null 2>&1 || true
 
-# ---- 8/8 删除项目文件 / 命令 ----
-info "8/8" "删除项目文件与命令"
+# ---- 8/9 还原端口 53 占用（WiFi 跳验证节点可能关闭过 systemd-resolved 的 stub 监听）----
+info "8/9" "还原 systemd-resolved 端口 53 配置"
+rm -f /etc/systemd/resolved.conf.d/proxy-manager-port53.conf
+if [[ -f /etc/resolv.conf.bak.proxy-manager ]]; then
+  mv -f /etc/resolv.conf.bak.proxy-manager /etc/resolv.conf
+fi
+systemctl restart systemd-resolved 2>/dev/null || true
+
+# ---- 9/9 删除项目文件 / 命令 ----
+info "9/9" "删除项目文件与命令"
 rm -f /usr/local/bin/proxy
 if [[ "$CLEAN" -eq 1 ]]; then
   rm -rf "$BASE_DIR"

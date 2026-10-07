@@ -37,7 +37,7 @@ It helps you deploy:
 - Protocols: VLESS + Reality + Vision Flow + TCP
 - Auto-generates: `UUID`, `Private Key`, `Public Key`, `Short ID`
 - Picks a free port from `443 / 8443 / 2053 / 2083`
-- **Web-auth bypass mode**: optionally move the node port to gateway-allowed `53 / 67 / 68 / 123` (DNS/DHCP/NTP); the subscription auto-adds `fragment` to split the TLS ClientHello against shallow SNI/DPI, bypassing captive portals at cafés/hotels (still fails on deep-inspection networks)
+- **WiFi web-auth bypass mode**: open a **separate dedicated node** on gateway-allowed `53 / 67 / 68 / 123` (DNS/DHCP/NTP); the subscription auto-adds `fragment` to split the TLS ClientHello against shallow SNI/DPI, bypassing captive portals at cafés/hotels (see the dedicated section below; still fails on deep-inspection networks)
 - Validates the Xray config before writing, and generates a VLESS URI + node info file
 
 ### 🌐 Clash Subscription
@@ -48,6 +48,14 @@ It helps you deploy:
 ### 🚀 Mihomo
 - TUN mode, Fake-IP DNS, auto-routing, rule-based split
 - Installs the core first, then validates the subscription URL before starting
+
+### 📶 WiFi Web-auth Bypass (Dedicated Node)
+- **Dedicated node**: its own Xray inbound, coexisting with the main node — separate port, separate UUID / Reality keys
+- Port sits on gateway-allowed `53 / 67 / 68 / 123` (DNS/DHCP/NTP), disguising traffic as DNS to slip past hotspot web auth
+- Prefers **53**; if systemd-resolved's stub listener holds it, the script can release it (disable the stub and switch to static DNS, backing up `/etc/resolv.conf` to `.bak.proxy-manager`)
+- The subscription auto-adds `fragment` (splits the TLS ClientHello) for this node against shallow SNI/DPI
+- Use **v2rayN / v2rayNG (Xray core)** with "DNS proxy / anti-leak" enabled in global mode; clash / sing-box handle port-53 disguise poorly
+- Known limits: some providers (e.g. Alibaba Cloud) block port 53 for personal use; deep-inspection networks (SNI blocking / real DNS proxying) may still fail
 
 ### ⚡ System Optimization
 - BBR, TCP Fast Open, FQ queue
@@ -161,7 +169,7 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
-- [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / main menu rearranged (DNS entry removed)
+- [x] **v3.4.0** **removed entire DNS module** (AdGuard Home + system DNS optimization, modules/dns.sh deleted) / main menu rearranged (DNS entry removed) / **renamed "Web-auth bypass" to "WiFi web-auth bypass" and made it a dedicated node** (own inbound, own keys and port, does not overwrite the main node; can release port 53)
 - [ ] Multi-node management / traffic stats / API management
 
 > Note: as of v3.3.0 the Web dashboard (FastAPI + webpanel.sh) is fully removed; as of **v3.4.0 the entire DNS module (AdGuard Home + system DNS optimization, modules/dns.sh) is also removed** and the main menu is rearranged accordingly. The v3.2-series entries referencing the dashboard are kept only as historical changelog and are no longer part of the product.

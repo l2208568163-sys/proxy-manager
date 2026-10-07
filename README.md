@@ -37,7 +37,7 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 协议：VLESS + Reality + Vision Flow + TCP
 - 自动生成：`UUID`、`Private Key`、`Public Key`、`Short ID`
 - 从 `443 / 8443 / 2053 / 2083` 中自动选择空闲端口
-- **Web 认证跳过模式**：可选把节点端口放到网关默认放行的 `53 / 67 / 68 / 123`（DNS/DHCP/NTP），订阅自动加入 `fragment` 分片抗浅层 SNI/DPI，绕过咖啡厅/酒店等 captive portal（深度检测环境仍可能失效）
+- **WiFi web 跳验证模式**：可开一个**独立的专属节点**放入网关默认放行的 `53 / 67 / 68 / 123`（DNS/DHCP/NTP），订阅自动加入 `fragment` 分片抗浅层 SNI/DPI，绕过咖啡厅/酒店等 captive portal（详见下方专节；深度检测环境仍可能失效）
 - 写配置前执行 Xray 配置校验，并生成 VLESS URI 与节点信息文件
 
 ### 🌐 Clash 订阅
@@ -48,6 +48,14 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 ### 🚀 Mihomo
 - TUN 模式、Fake-IP DNS、自动路由、分流规则
 - 先安装核心，再导入并校验订阅 URL 后才启动
+
+### 📶 WiFi web 跳验证（独立专属节点）
+- **独立节点**：独立 Xray inbound，与主节点并存 —— 各自端口、各自 UUID / Reality 密钥，互不影响
+- 端口落在网关默认放行的 `53 / 67 / 68 / 123`（DNS/DHCP/NTP），把流量伪装成 DNS 以绕过热点 Web 认证
+- 优先使用 **53**；若被 systemd-resolved 的 stub 监听占用，可自动释放（关闭 stub 并改用静态 DNS，原 `/etc/resolv.conf` 备份为 `.bak.proxy-manager`）
+- 订阅自动为该节点加入 `fragment` 分片（拆分 TLS ClientHello）以抗浅层 SNI/DPI
+- 客户端请用 **v2rayN / v2rayNG（Xray 核心）** 并开启“DNS 代理 / 防泄漏”走全局；clash / sing-box 对 53 端口伪装支持不佳
+- 已知限制：阿里云等部分厂商已封禁 53 端口个人使用；深度检测（SNI 阻断 / 真实 DNS 代理）环境仍可能失效
 
 ### ⚡ 系统优化
 - BBR、TCP Fast Open、FQ 队列
@@ -164,7 +172,7 @@ Proxy-Manager
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
 - [x] **v3.3.0** Web 认证跳过（端口53 + 分片）/ **移除 Web 管理面板**（FastAPI 面板与 modules/webpanel.sh 已删除）/ 文档同步更新
-- [x] **v3.4.0** **移除整个 DNS 模块**（AdGuard Home + 系统 DNS 优化，modules/dns.sh 已删除）/ 主菜单重排（移除 DNS 管理项）
+- [x] **v3.4.0** **移除整个 DNS 模块**（AdGuard Home + 系统 DNS 优化，modules/dns.sh 已删除）/ 主菜单重排（移除 DNS 管理项）/**“Web 认证跳过”更名为「WiFi web 跳验证」并改为独立专属节点**（独立 inbound、独立密钥与端口，不覆盖主节点；可自动释放 53）
 - [ ] 多节点管理 / 流量统计 / API 管理
 
 > 注：v3.3.0 起彻底移除 Web 管理面板（FastAPI + webpanel.sh）；**v3.4.0 起进一步移除整个 DNS 模块（含 AdGuard Home 与系统 DNS 优化，modules/dns.sh 已删除）**，主菜单相应重排。v3.2 系列中与面板相关的条目仅作为历史记录保留，当前版本不再包含该组件。
