@@ -5,6 +5,14 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 generate() {
   load_node_data; install -d -m 0755 "$WEB_ROOT"
+  local bypass="${BYPASS:-0}" frag_block=""
+  if [[ "$bypass" == "1" ]]; then
+    # Web 认证跳过：分片 TLS ClientHello 以抗浅层 SNI/DPI（端口已落在网关放行的 53/67/68/123）
+    frag_block='    fragment:
+      packets: tlshello
+      length: 100-200
+      interval: 20-40'
+  fi
   # 订阅随机令牌：订阅路径不可猜测。固定路径 /clash/config.yaml 会被扫段者直接取走
   # 含 UUID 的节点配置（UUID 即 VLESS 唯一凭证）。
   if [[ -z "${SUB_TOKEN:-}" ]]; then
@@ -57,6 +65,7 @@ proxies:
     reality-opts:
       public-key: "$PUBLIC_KEY"
       short-id: "$SHORT_ID"
+$frag_block
 proxy-groups:
   - name: Proxy
     type: select

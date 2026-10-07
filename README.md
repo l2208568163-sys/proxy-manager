@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/l2208568163-sys/proxy-manager"><img src="https://img.shields.io/github/stars/l2208568163-sys/proxy-manager" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/l2208568163-sys/proxy-manager" alt="GitHub license"></a>
-  <img src="https://img.shields.io/badge/version-3.2.9-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.3.0-blue" alt="Version">
 </p>
 
 <p align="center">
@@ -39,6 +39,7 @@ Proxy-Manager 是一个面向 Ubuntu Server 的代理节点自动化管理工具
 - 协议：VLESS + Reality + Vision Flow + TCP
 - 自动生成：`UUID`、`Private Key`、`Public Key`、`Short ID`
 - 从 `443 / 8443 / 2053 / 2083` 中自动选择空闲端口
+- **Web 认证跳过模式**：可选把节点端口放到网关默认放行的 `53 / 67 / 68 / 123`（DNS/DHCP/NTP），订阅自动加入 `fragment` 分片抗浅层 SNI/DPI，绕过咖啡厅/酒店等 captive portal（深度检测环境仍可能失效）
 - 写配置前执行 Xray 配置校验，并生成 VLESS URI 与节点信息文件
 
 ### 🌐 Clash 订阅
@@ -198,7 +199,7 @@ Proxy-Manager
 - [x] **v3.2.3** 引导层：install.sh 自动安装 Web 面板并打印访问信息 / webpanel.sh 增加启动·停止·地址·凭据·重置密码管理项 / 主菜单 Web 入口标星
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
-- [ ] **v3.3** 多节点管理 / 流量统计 / API 管理
+- [ ] **v3.3** Web 认证跳过（端口53 + 分片）/ 多节点管理 / 流量统计 / API 管理
 
 ---
 

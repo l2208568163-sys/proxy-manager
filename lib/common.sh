@@ -38,6 +38,9 @@ env_upsert() {
 }
 port_in_use() { ss -ltn 2>/dev/null | awk -v p="$1" '$4 ~ (":" p "$") { found=1 } END { exit !found }'; }
 choose_available_port() { local p; for p in 443 8443 2053 2083; do port_in_use "$p" || { echo "$p"; return; }; done; return 1; }
+# Web 认证跳过：优先选网关默认放行的端口（DNS/DHCP/NTP 等），用于绕过 captive portal
+# 这些端口常被热点放行以便跳转到 Web 认证页；Xray 仍为 TCP 监听，配合订阅侧 fragment 分片抗浅层 SNI/DPI
+choose_bypass_port() { local p; for p in 53 67 68 123; do port_in_use "$p" || { echo "$p"; return; }; done; return 1; }
 # 等待端口进入监听，默认最多 5 秒（每 0.5s 探一次）；成功返回 0
 wait_for_listen() { local p="$1" tries="${2:-10}" i=0; while (( i < tries )); do port_in_use "$p" && return 0; sleep 0.5; i=$((i+1)); done; return 1; }
 detect_public_ip() {
