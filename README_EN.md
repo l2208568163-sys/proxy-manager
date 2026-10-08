@@ -95,7 +95,7 @@ proxy
 Main menu:
 ```
 ================================
- Proxy Manager v3.4.3
+ Proxy Manager v3.4.4
 ================================
  1. Xray Reality
  2. Clash Subscription
@@ -178,6 +178,7 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.3.0** Web-auth bypass (port 53 + fragment) / **removed Web dashboard** (FastAPI panel and modules/webpanel.sh deleted) / docs updated
+- [x] **v3.4.4** **added TCP53 control-test node** (Xray menu 8/9): bare VLESS + TCP:53, coexists with the WiFi node's UDP:53. Testing all three entries (443 / 53-TCP / 53-UDP) tells you whether the middle network allows TCP 53, UDP 53, hijacks it, or blocks both
 - [x] **v3.4.3** **fixed WiFi node failing to start / connect on new Xray cores**: v26.2.6+ removed `kcpSettings.header/seed`; DNS disguise moved to a `finalmask` UDP mask, and the legacy wire format is two stacked layers (DNS header + XOR) with incompatible mask names across generations (v26.2~26.3 `header-dns`+`mkcp-original` vs v26.7+ `mkcp-legacy`) — config writing now tries and falls back automatically (verified with real 26.3.27 server + 26.9.9 client, HTTP 200 interop)
 - [x] **v3.4.2** **fixed "program quits right after selecting a feature"**: main menu wraps every module with `|| module_failed` so a module error no longer kills the whole program and the error stays on screen; Xray menu 1/6/7, load_node_data, write_xray_config and restart_xray_and_wait now fail with readable errors and graceful returns instead of relying on set -e
 - [x] **v3.4.1** **interactive backup management**: on install, list this run's + leftover backups and let the user pick whether to restore (new `--restore` / `--no-restore`; non-interactive runs auto-restore newest) / at uninstall, ask about leftover backups (delete all / keep all / delete selected numbers); WiFi web-auth bypass switched to Vmess + mKCP (UDP + DNS disguise)

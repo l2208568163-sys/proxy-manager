@@ -55,6 +55,16 @@ wifi_inbound_json() {
     "$port" "$uuid" "$masks"
 }
 
+# TCP53 对照测试 inbound：VLESS 裸协议 + TCP（无 TLS、无伪装）。
+# 用途：排查「53 端口到底通不通」的对照实验 —— 与 WiFi 节点的 UDP:53 并存
+# （TCP 53 与 UDP 53 是两个独立通道，不冲突），分别测试即可判断中间网络
+# 放行的是 TCP 53、UDP 53、还是劫持/都不放。
+tcp53_inbound_json() {
+  local port="$1" uuid="$2"
+  printf '{"listen":"0.0.0.0","port":%s,"protocol":"vless","settings":{"clients":[{"id":"%s"}],"decryption":"none"},"streamSettings":{"network":"tcp","security":"none"}}' \
+    "$port" "$uuid"
+}
+
 # WiFi DNS 伪装域名：必须与客户端一致 —— DNS 头长度随域名变化，两端域名不同则每包错位、全部丢弃。
 # v2rayN/v2rayNG 对 type=dns 链接不传 host 域名（仅 ws/grpc 使用 host），客户端最终用核心默认
 # www.baidu.com（Xray kcp header DNS 的内置默认），故服务端默认必须同为 www.baidu.com。
@@ -88,7 +98,11 @@ _write_xray_config_once() {
     ins+=("$(inbound_json "$PORT" "$UUID" "$PRIVATE_KEY" "$SHORT_ID")")
   fi
   if [[ -n "${WIFI_UUID:-}" && -n "${WIFI_PORT:-}" ]]; then
-    ins+=("$(wifi_inbound_json "$WIFI_PORT" "$WIFI_UUID" "${WIFI_DOMAIN:-$SNI}" "$style")")
+    ins+=("$(wifi_inbound_json "$WIFI_PORT" "$WIFI_UUID" "${WIFI_DOMAIN:-$WIFI_DNS_DOMAIN_DEFAULT}" "$style")")
+  fi
+  # TCP53 对照测试节点（VLESS 裸协议 + TCP，与 WiFi 的 UDP:53 并存）
+  if [[ "${TCP53:-0}" == "1" && -n "${TCP53_UUID:-}" && -n "${TCP53_PORT:-}" ]]; then
+    ins+=("$(tcp53_inbound_json "$TCP53_PORT" "$TCP53_UUID")")
   fi
   ((${#ins[@]})) || { say "没有可写入的节点：主节点与 WiFi 节点信息均缺失。"; return 1; }
   joined="$(IFS=,; echo "${ins[*]}")"
@@ -229,6 +243,12 @@ install_wifi_node() {
     port="$WIFI_PORT"
     say "检测到已存在的 WiFi 节点（UDP $port）：复用该端口并轮换 UUID。"
   fi
+  # TCP53 对照节点占着 TCP 53 也算“自己人”：WiFi(UDP) 与 TCP53(TCP) 可同端口并存
+  if [[ -z "$port" && "${TCP53:-0}" == "1" && -n "${TCP53_PORT:-}" ]] \
+     && ss -lntp 2>/dev/null | grep -w "${TCP53_PORT}" | grep -qi xray; then
+    port="$TCP53_PORT"
+    say "检测到 TCP53 对照节点（TCP $port）：WiFi 节点复用该端口（UDP/TCP 并存）。"
+  fi
   if [[ -z "$port" ]]; then
     if ! port_in_use 53 && ! port_in_use_udp 53; then
       port=53
@@ -313,16 +333,100 @@ remove_wifi_node() {
   fi
 }
 
+install_tcp53_test_node() {
+  # TCP53 对照测试节点：VLESS 裸协议 + TCP:53（无 TLS、无伪装）。
+  # 与 WiFi 节点的 UDP:53 并存（TCP/UDP 互不冲突），用于对照实验：
+  #   443(Reality) / 53-TCP(VLESS) / 53-UDP(mKCP) 三个入口分别测，
+  #   即可判断中间网络放行的是 TCP 53、UDP 53、还是劫持/都不放。
+  # 同样遵守「条件上下文不靠 set -e」约定：失败步骤显式 return 1。
+  local uuid server vuri
+  say "正在准备 TCP53 对照测试节点（VLESS + TCP 53，无伪装）..."
+  ensure_xray || { say "✗ Xray 安装/检查失败（多为无法访问 GitHub 下载安装脚本）。"; return 1; }
+  command -v xray >/dev/null 2>&1 || { say "✗ 未找到 xray 命令，无法继续。"; return 1; }
+  server="$(detect_public_ip)" || { say "✗ 无法获取公网 IPv4，请检查服务器出网后重试。"; return 1; }
+  if [[ -f "$NODE_FILE" ]]; then source "$NODE_FILE" 2>/dev/null || true; fi
+  # TCP 53 与 UDP 53 独立；TCP 53 若被 xray 自身（重跑）占用则直接复用，被其他程序占用则报错
+  if ss -lntp 2>/dev/null | grep -w "53" | grep -qi xray && [[ "${TCP53:-0}" != "1" ]]; then
+    say "✗ TCP 53 已被 Xray 占用但 node.env 未记录 TCP53 节点（疑似状态不一致）。"
+    say "  可先运行本菜单 9 清理残留后重试。"
+    return 1
+  fi
+  uuid="$(xray uuid)" || { say "✗ 生成 UUID 失败（xray 命令异常）。"; return 1; }
+  [[ -n "$uuid" ]] || { say "✗ 生成的 UUID 为空。"; return 1; }
+  install -d -m 0755 "$DATA_DIR"
+  [[ -f "$NODE_FILE" ]] || install -m 0600 /dev/null "$NODE_FILE"
+  vuri="vless://$uuid@$server:53?encryption=none&security=none&type=tcp#TCP53-$server"
+  env_upsert "$NODE_FILE" SERVER "$server"
+  env_upsert "$NODE_FILE" SNI "$SNI"
+  env_upsert "$NODE_FILE" TCP53 1
+  env_upsert "$NODE_FILE" TCP53_PORT 53
+  env_upsert "$NODE_FILE" TCP53_UUID "$uuid"
+  env_upsert "$NODE_FILE" TCP53_NODE_NAME "TCP53-$server"
+  env_upsert "$NODE_FILE" TCP53_URI "\"$vuri\""
+  chmod 0600 "$NODE_FILE"
+  # shellcheck disable=SC1090
+  source "$NODE_FILE"
+  write_xray_config || { say "✗ Xray 配置写入/校验失败，TCP53 节点未生效（详见上方输出）。"; return 1; }
+  restart_xray_and_wait 53 tcp || return 1
+  # WiFi(UDP:53) 若同时存在，确认它也还在监听
+  if [[ "${WIFI:-0}" == "1" ]] && ! port_in_use_udp "${WIFI_PORT:-53}"; then
+    say "⚠ 注意：WiFi 节点的 UDP ${WIFI_PORT:-53} 未见监听，可重新运行本菜单 6 修复。"
+  fi
+  command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && { ufw allow "53/tcp"; ufw allow "53/udp"; } || true
+  say "✓ TCP53 对照测试节点已就绪：VLESS 裸协议，监听 TCP 53（无任何伪装）。"
+  say "  与 WiFi 节点的 UDP 53 并存，互不影响；主节点 ${PORT:-（未配置）} 不受影响。"
+  say "  对照测试链接（vless://，v2rayN / v2rayNG 直接导入）："
+  say "  $vuri"
+  say ""
+  say "  ===== 对照判读表（分别用 v2rayN 测三个节点的真连接延迟）====="
+  say "  443 通 + 53TCP 通 + 53UDP 不通 → 中间网络只放行 TCP 53：把 WiFi 节点换成 TCP 方案才有意义"
+  say "  443 通 + 53TCP 不通 + 53UDP 不通 → 53 被劫持/只放行到指定 DNS：UDP/TCP 伪装方案都过不去"
+  say "  443 不通 → 主节点本身的问题（服务器/安全组），先修主节点"
+  say "  53TCP 用 nc 测：nc -vz $server 53 （仅测端口可达性，mKCP/VLESS 语义层要用客户端测）"
+}
+
+remove_tcp53_test_node() {
+  if [[ ! -f "$NODE_FILE" ]]; then
+    say "未找到节点信息（$NODE_FILE）。"
+    return 1
+  fi
+  # shellcheck disable=SC1090
+  source "$NODE_FILE" 2>/dev/null || true
+  if [[ "${TCP53:-0}" != "1" ]]; then
+    say "当前没有 TCP53 对照测试节点（未记录 TCP53=1），无需移除。"
+    return 1
+  fi
+  confirm "确认移除 TCP53 对照测试节点（TCP ${TCP53_PORT:-53}）？" || { say "已取消。"; return 0; }
+  local k
+  for k in TCP53 TCP53_PORT TCP53_UUID TCP53_NODE_NAME TCP53_URI; do
+    sed -i "/^${k}=/d" "$NODE_FILE"
+  done
+  # shellcheck disable=SC1090
+  source "$NODE_FILE"
+  if [[ -n "${UUID:-}" && -n "${PRIVATE_KEY:-}" && -n "${PORT:-}" && -n "${SHORT_ID:-}" ]] \
+     || [[ "${WIFI:-0}" == "1" && -n "${WIFI_UUID:-}" ]]; then
+    write_xray_config || { say "✗ 重建配置失败，请运行 xray run -test -c $XRAY_CONFIG 查看详情。"; return 1; }
+    if service_is_active xray; then systemctl restart xray; else systemctl start xray; fi
+    say "TCP53 对照节点已移除，其余节点保持不变。"
+  else
+    systemctl stop xray 2>/dev/null || true
+    rm -f "$XRAY_CONFIG"
+    say "TCP53 对照节点已移除；当前没有其他节点，Xray 已停止。"
+  fi
+}
+
 require_root
 while true; do
-  clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "6. WiFi web 跳验证（独立节点 · Vmess+mKCP UDP53）"; say "7. 移除 WiFi 跳验证节点"; say "0. 返回"
+  clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "6. WiFi web 跳验证（独立节点 · Vmess+mKCP UDP53）"; say "7. 移除 WiFi 跳验证节点"; say "8. TCP53 对照测试节点（VLESS+TCP53）"; say "9. 移除 TCP53 对照节点"; say "0. 返回"
   read -r -p "请选择: " c
   case "$c" in
     1) if ! install_xray; then say "（主节点未配置完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;;
-    2) if load_node_data; then say "${VLESS_URI:-（未配置主节点）}"; if [[ "${WIFI:-0}" == "1" ]]; then say "WiFi 跳验证节点: ${WIFI_URI:-}"; fi; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先运行选项 1 或订阅菜单生成。}"; fi; read -r -p "请按回车继续..." _;;
+    2) if load_node_data; then say "${VLESS_URI:-（未配置主节点）}"; if [[ "${WIFI:-0}" == "1" ]]; then say "WiFi 跳验证节点: ${WIFI_URI:-}"; fi; if [[ "${TCP53:-0}" == "1" ]]; then say "TCP53 对照节点: ${TCP53_URI:-}"; fi; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先运行选项 1 或订阅菜单生成。}"; fi; read -r -p "请按回车继续..." _;;
     3) systemctl restart xray;; 4) systemctl --no-pager status xray || true; read -r -p "请按回车继续..." _;;
     5) confirm "Remove Xray and generated node data?" && { bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge; rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"; };;
     6) if ! install_wifi_node; then say "（WiFi 跳验证节点未配置完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;;
-    7) if ! remove_wifi_node; then say "（移除未完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;; 0) exit;; *) say "无效选择。";;
+    7) if ! remove_wifi_node; then say "（移除未完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;;
+    8) if ! install_tcp53_test_node; then say "（TCP53 对照节点未配置完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;;
+    9) if ! remove_tcp53_test_node; then say "（移除未完成，原因见上方输出）"; fi; read -r -p "请按回车继续..." _;; 0) exit;; *) say "无效选择。";;
   esac
 done
