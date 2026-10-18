@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}设置 · Proxy Manager 控制台{% endblock %}
+{% block page_title %}设置{% endblock %}
+{% block page_sub %}控制台偏好与系统参数{% endblock %}
+
+{% block content %}
+  <div class="page-head"><div><h1>设置</h1><p>控制台偏好与系统参数</p></div></div>
+  <div class="card" style="max-width:640px">
+    <div class="eyebrow">常规</div>
+    <div class="kv"><span class="k">服务器别名</span><span class="v">{{ node_name }}</span></div>
+    <div class="kv"><span class="k">时区</span><span class="v">Asia/Shanghai (UTC+8)</span></div>
+    <div class="kv"><span class="k">界面语言</span><span class="v">简体中文</span></div>
+    <div class="kv"><span class="k">主题</span><span class="v"><span class="pill neutral">深色（默认）</span></span></div>
+    <div class="kv"><span class="k">数据保留</span><span class="v">90 天</span></div>
+    <div style="margin-top:16px"><button class="btn primary sm" onclick="toast('设置已保存（演示）')">保存更改</button></div>
+  </div>
+{% endblock %}

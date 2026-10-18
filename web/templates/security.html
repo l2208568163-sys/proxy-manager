@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}安全 · Proxy Manager 控制台{% endblock %}
+{% block page_title %}安全{% endblock %}
+{% block page_sub %}访问暴露面、凭据与登录防护{% endblock %}
+
+{% block content %}
+  <div class="page-head"><div><h1>安全</h1><p>访问暴露面、凭据与登录防护</p></div></div>
+
+  <div class="card" style="margin-bottom:18px">
+    <div class="eyebrow">访问暴露面</div>
+    <div class="kv"><span class="k">监听地址</span><span class="v mono">{{ bind_addr }}:{{ bind_port }}{% if not public_on %}（仅本机）{% endif %}</span></div>
+    <div class="kv"><span class="k">公网访问</span><span class="v">
+      {% if public_on %}<span class="pill warn">已开启</span>{% else %}<span class="pill idle">已关闭</span>{% endif %}
+      <span class="switch {% if public_on %}on{% endif %}" onclick="toast('公网开关由 panel.sh 控制，重启面板生效')"></span>
+    </span></div>
+    <div class="kv"><span class="k">SSH 隧道建议</span><span class="v mono">ssh -L {{ bind_port }}:127.0.0.1:{{ bind_port }} user@host</span></div>
+    <p class="tertiary" style="font-size:12px;margin-top:12px">开启公网访问会绑定 0.0.0.0 并放行端口，建议用完即关或前置带 TLS 的反向代理。</p>
+  </div>
+
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="eyebrow">凭据</div>
+      <div class="kv"><span class="k">登录用户名</span><span class="v mono">{{ web_user }}</span></div>
+      <div class="kv"><span class="k">密码</span><span class="v">••••••••••</span></div>
+      <div class="kv"><span class="k">上次重置</span><span class="v">{{ cred_reset|default('-') }}</span></div>
+      <div style="margin-top:14px"><button class="btn secondary sm" onclick="toast('请在服务器运行 modules/panel.sh reset 生成随机口令')">重置随机密码</button></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">登录防护</div>
+      <div class="kv"><span class="k">失败锁定</span><span class="v"><span class="pill ok">启用</span></span></div>
+      <div class="kv"><span class="k">锁定阈值</span><span class="v tnum">{{ lock_threshold }} 次 / {{ lock_window_min }} 分钟</span></div>
+      <div class="kv"><span class="k">当前锁定 IP</span><span class="v tnum">{{ locked_ips }}</span></div>
+      <div class="kv"><span class="k">窗口内失败</span><span class="v tnum">{{ recent_failures }}</span></div>
+    </div>
+  </div>
+{% endblock %}

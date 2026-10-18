@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Proxy Manager 控制台{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div id="app">
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-brand">
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+          <path d="M16 2 28 9v14L16 30 4 23V9L16 2Z" stroke="#3B9EFF" stroke-width="1.6" fill="rgba(59,158,255,.12)"/>
+          <path d="M10 16a6 6 0 0 1 6-6" stroke="#22D3EE" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="16" cy="16" r="2.4" fill="#3B9EFF"/>
+        </svg>
+        <span class="name">Proxy Manager</span>
+        <span class="vchip">v{{ version }}</span>
+      </div>
+      <nav class="sb-nav">
+        <div class="sb-group">运行</div>
+        <a class="sb-item {% if active_page=='overview' %}active{% endif %}" href="/">
+          <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>概览</a>
+        <a class="sb-item {% if active_page=='nodes' %}active{% endif %}" href="/nodes">
+          <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>节点</a>
+        <a class="sb-item {% if active_page=='subs' %}active{% endif %}" href="/subs">
+          <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg>订阅</a>
+        <a class="sb-item {% if active_page=='services' %}active{% endif %}" href="/services">
+          <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>服务<span class="badge">{{ services|length }}</span></a>
+        <div class="sb-group">防护</div>
+        <a class="sb-item {% if active_page=='security' %}active{% endif %}" href="/security">
+          <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3Z"/></svg>安全</a>
+        <div class="sb-group">系统</div>
+        <a class="sb-item {% if active_page=='settings' %}active{% endif %}" href="/settings">
+          <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L16.2 3h-3.8l-.4 2.5a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.5h3.8l.4-2.5a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></svg>设置</a>
+      </nav>
+      <div class="sb-foot">
+        <div class="conn"><span class="dot"></span>本地隧道 · {{ bind_addr }}:{{ bind_port }}</div>
+      </div>
+    </aside>
+
+    <!-- 主区 -->
+    <div>
+      <header class="topbar">
+        <button class="icon-btn" id="menuToggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="crumb">
+          <span class="t">{% block page_title %}概览{% endblock %}</span>
+          <span class="s">{% block page_sub %}{% endblock %}</span>
+        </div>
+        <div class="tb-search">
+          <svg class="si" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input placeholder="搜索节点、订阅、日志…">
+          <span class="kbd">⌘K</span>
+        </div>
+        <div class="tb-right">
+          <span class="env-badge"><span class="dot" style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>生产环境</span>
+          <button class="icon-btn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="n">2</span></button>
+          <div class="avatar">A</div>
+        </div>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- 重启确认框（共享） -->
+<div class="modal-mask" id="modal">
+  <div class="modal">
+    <div class="mh">
+      <div class="mic">!</div>
+      <div><h3 id="mTitle">确认重启服务</h3><p id="mBody">重启该服务会短暂中断现有连接，确认继续？此操作已通过 POST + 确认防护。</p></div>
+    </div>
+    <div class="mact">
+      <button class="btn ghost" type="button" onclick="closeModal()">取消</button>
+      <button class="btn danger" type="button" onclick="confirmRestart()">确认重启</button>
+    </div>
+  </div>
+</div>
+<form id="restartForm" method="post" action="" style="display:none"><button type="submit">submit</button></form>
+
+<div class="toast" id="toast"><span class="ti">✓</span><span id="toastMsg">已复制</span></div>
+
+<script>
+function copyText(id){var el=document.getElementById(id);if(!el)return;var t=el.innerText.trim();
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast('已复制到剪贴板')},function(){toast('复制失败，请手动复制')});}
+  else{toast('复制失败，请手动复制');}}
+function toast(m){var t=document.getElementById('toast');document.getElementById('toastMsg').textContent=m;
+  t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},1900);}
+var restartKey='';
+function openRestart(label,key){restartKey=key;document.getElementById('mTitle').textContent='确认重启 '+label;
+  document.getElementById('mBody').textContent='重启 '+label+' 会短暂中断现有连接，确认继续？此操作已通过 POST + 确认防护。';
+  document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+function confirmRestart(){closeModal();var f=document.getElementById('restartForm');f.action='/restart/'+restartKey;f.submit();}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+</script>
+{% block script %}{% endblock %}
+</body>
+</html>

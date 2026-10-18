@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}日志 · {{ svc_label }} · Proxy Manager{% endblock %}
+{% block page_title %}日志 · {{ svc_label }}{% endblock %}
+{% block page_sub %}服务运行日志（已转义，防 XSS）{% endblock %}
+
+{% block content %}
+  <div class="card log-card" style="margin:0">
+    <div class="eyebrow">日志：{{ svc_label }}（{{ svc }}.service）</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="pill neutral">全部</span><span class="pill bad">错误</span><span class="pill warn">警告</span><span class="pill ok">信息</span>
+    </div>
+    <pre class="log">{{ text }}</pre>
+    <div class="log-actions">
+      <button class="btn danger sm" onclick="openRestart('{{ svc_label }}','{{ svc }}')">重启 {{ svc_label }}</button>
+      <a class="btn ghost sm" href="/services">返回服务</a>
+    </div>
+  </div>
+{% endblock %}
