@@ -107,6 +107,7 @@ button{font-family:inherit;cursor:pointer}
 
 /* ---------- 卡片 ---------- */
 .card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--sh)}
+.card:hover{border-color:var(--border-strong)}
 .card.hoverable{transition:.18s}
 .card.hoverable:hover{transform:translateY(-2px);border-color:rgba(59,158,255,.35)}
 .eyebrow{font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);

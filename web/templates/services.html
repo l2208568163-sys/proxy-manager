@@ -30,9 +30,12 @@
   </div>
 
   <div class="card">
-    <div class="eyebrow">日志查看器</div>
-    <p class="tertiary" style="font-size:13px">选择服务后查看实时日志。日志输出已做 HTML 转义，防止日志注入 XSS。</p>
-    <div class="btnrow" style="margin-top:12px">
+    <div class="eyebrow">日志查看器 · Xray</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="pill neutral">全部</span><span class="pill bad">错误</span><span class="pill warn">警告</span><span class="pill ok">信息</span>
+    </div>
+    <pre class="log">{{ log_text }}</pre>
+    <div class="log-actions">
       {% for s in services %}<a class="btn secondary sm" href="/logs/{{ s.key }}">{{ s.label }} 日志</a>{% endfor %}
     </div>
   </div>

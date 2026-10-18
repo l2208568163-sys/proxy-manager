@@ -4,36 +4,31 @@
 {% block page_sub %}实时掌握节点、订阅与服务运行状态{% endblock %}
 
 {% block content %}
-  <div class="page-head">
-    <div><h1>概览</h1><p>实时掌握节点、订阅与服务运行状态</p></div>
-    <div class="head-actions">
-      <button class="btn ghost sm" onclick="toast('已刷新数据')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg> 刷新</button>
-      <a class="btn primary sm" href="/subs">管理订阅</a>
-    </div>
-  </div>
-
-  <!-- 指标卡（真实数据） -->
+  <!-- 指标卡（真实数据 + 迷你走势，与参考原型一致） -->
   <div class="grid cols-4" style="margin-bottom:18px">
     <div class="card stat hoverable">
       <div class="lab">节点在线率</div>
       <div class="val tnum">{{ online_rate }}<span class="u">%</span></div>
       <div class="delta {% if online_rate==100 %}up{% else %}down{% endif %}">{% if online_rate==100 %}▲ 服务正常{% else %}▼ 检查 Xray{% endif %}</div>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#34D399" stroke-width="2" points="0,26 15,22 30,24 45,18 60,20 75,14 90,12"/></svg>
     </div>
     <div class="card stat hoverable">
       <div class="lab">CPU 使用率</div>
       <div class="val tnum">{{ cpu|round(1) }}<span class="u">%</span></div>
       <div class="delta flat">实时采样</div>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#3B9EFF" stroke-width="2" points="0,28 15,24 30,25 45,16 60,18 75,10 90,8"/></svg>
     </div>
     <div class="card stat hoverable">
       <div class="lab">内存使用率</div>
       <div class="val tnum">{{ memory|round(1) }}<span class="u">%</span></div>
       <div class="delta flat">实时采样</div>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#22D3EE" stroke-width="2" points="0,24 15,22 30,20 45,21 60,16 75,17 90,13"/></svg>
     </div>
     <div class="card stat hoverable">
       <div class="lab">网络累计</div>
       <div class="val tnum">{{ net_total }}<span class="u">GB</span></div>
       <div class="delta flat">↓{{ net_recv }} / ↑{{ net_sent }}</div>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#FBBF24" stroke-width="2" points="0,12 15,16 30,14 45,20 60,18 75,24 90,22"/></svg>
     </div>
   </div>
 
@@ -76,8 +71,8 @@
     </div>
   </div>
 
-  <!-- Reality 节点 + Clash 订阅 -->
-  <div class="grid cols-2">
+  <!-- Reality 节点 + 最近活动（与参考原型一致的时间线） -->
+  <div class="grid cols-2" style="margin-bottom:18px">
     <div class="card">
       <div class="eyebrow">Reality 节点</div>
       <div class="kv"><span class="k">节点名称</span><span class="v">{{ node_name }}</span></div>
@@ -90,21 +85,31 @@
     </div>
 
     <div class="card">
-      <div class="eyebrow">Clash 订阅</div>
-      {% if sub_ready %}
-      <div class="sub-box">
-        <div class="sub-url">
-          <code id="subUrl">{{ clash }}</code>
-          <div class="acts"><button class="btn primary sm" onclick="copyText('subUrl')">复制订阅地址</button><a class="btn ghost sm" href="/subs">轮换令牌</a></div>
-        </div>
-        <div style="text-align:center">
-          {% if qr %}<img class="qr" src="{{ qr }}" alt="订阅二维码">{% else %}<div class="qr ph">二维码<br>生成中</div>{% endif %}
-          <p class="tertiary" style="font-size:11.5px;margin-top:8px">手机扫码导入</p>
-        </div>
+      <div class="eyebrow">最近活动</div>
+      <div class="tl">
+        {% for a in activity %}
+        <div class="tl-item"><div class="tt">{{ a.title }}</div><div class="tm">{{ a.time }}</div></div>
+        {% endfor %}
       </div>
-      {% else %}
-      <p class="hint tertiary">订阅尚未生成或缺少随机令牌。请在服务器运行 <code>proxy</code> → 主菜单 2 重新生成订阅。</p>
-      {% endif %}
     </div>
+  </div>
+
+  <!-- Clash 订阅（恢复为参考原型的整行通栏） -->
+  <div class="card" style="margin-top:18px">
+    <div class="eyebrow">Clash 订阅</div>
+    {% if sub_ready %}
+    <div class="sub-box">
+      <div class="sub-url">
+        <code id="subUrl">{{ clash }}</code>
+        <div class="acts"><button class="btn primary sm" onclick="copyText('subUrl')">复制订阅地址</button><a class="btn ghost sm" href="/subs">轮换令牌</a></div>
+      </div>
+      <div style="text-align:center">
+        {% if qr %}<img class="qr" src="{{ qr }}" alt="订阅二维码">{% else %}<div class="qr ph">二维码<br>生成中</div>{% endif %}
+        <p class="tertiary" style="font-size:11.5px;margin-top:8px">手机扫码导入</p>
+      </div>
+    </div>
+    {% else %}
+    <p class="hint tertiary">订阅尚未生成或缺少随机令牌。请在服务器运行 <code>proxy</code> → 主菜单 2 重新生成订阅。</p>
+    {% endif %}
   </div>
 {% endblock %}

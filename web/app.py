@@ -128,14 +128,52 @@ def human(n: float) -> str:
     return f"{n:.1f} PB"
 
 
+def login_stats() -> dict:
+    """登录失败限速实时统计（security_context 与 dashboard_context 共用）。"""
+    now = time.time()
+    window = auth._WINDOW_SECONDS
+    max_fails = auth._MAX_FAILS
+    locked_ips = 0
+    recent_failures = 0
+    for ts in auth._FAILURES.values():
+        recent = [t for t in ts if now - t < window]
+        recent_failures += len(recent)
+        if len(recent) >= max_fails:
+            locked_ips += 1
+    return {
+        "lock_threshold": max_fails,
+        "lock_window_min": window // 60,
+        "locked_ips": locked_ips,
+        "recent_failures": recent_failures,
+    }
+
+
 def dashboard_context() -> dict:
     node = get_node()
     clash = subscription_url(node)
     sent, recv = net_stats()
     xray_active = service_status("xray") == "active"
+    stats = login_stats()
+    # 概览「最近活动」时间线：用真实可推导的状态拼装，不做假时间戳
+    activity = []
+    if xray_active:
+        activity.append({"title": "Xray 节点运行中", "time": "实时", "kind": "ok"})
+    else:
+        activity.append({"title": "Xray 节点离线", "time": "实时", "kind": "bad"})
+    if clash:
+        activity.append({"title": "订阅令牌有效", "time": node.get("CREATED") or "—", "kind": "ok"})
+    else:
+        activity.append({"title": "订阅尚未生成", "time": "—", "kind": "warn"})
+    if stats["locked_ips"]:
+        activity.append({"title": f"{stats['locked_ips']} 个 IP 被临时锁定", "time": f"近 {stats['lock_window_min']} 分钟", "kind": "warn"})
+    elif stats["recent_failures"]:
+        activity.append({"title": f"近 {stats['lock_window_min']} 分钟 {stats['recent_failures']} 次登录失败", "time": "当前", "kind": "warn"})
+    else:
+        activity.append({"title": "登录防护正常，无异常", "time": "当前", "kind": "ok"})
     return {
         "node": node,
         "node_name": node.get("NODE_NAME", "-"),
+        "node_created": node.get("CREATED") or "-",
         "server": node.get("SERVER", "-"),
         "port": node.get("PORT", "-"),
         "sni": node.get("SNI", "-"),
@@ -150,22 +188,17 @@ def dashboard_context() -> dict:
         "net_recv": human(recv),
         "net_sent": human(sent),
         "net_total": round((sent + recv) / (1024 ** 3), 1),
+        "lock_window_min": stats["lock_window_min"],
+        "locked_ips": stats["locked_ips"],
+        "recent_failures": stats["recent_failures"],
+        "activity": activity,
     }
 
 
 def security_context() -> dict:
     creds = auth.load_creds()
     web_user = creds[0] if creds else "-"
-    now = time.time()
-    window = auth._WINDOW_SECONDS
-    max_fails = auth._MAX_FAILS
-    locked_ips = 0
-    recent_failures = 0
-    for ts in auth._FAILURES.values():
-        recent = [t for t in ts if now - t < window]
-        recent_failures += len(recent)
-        if len(recent) >= max_fails:
-            locked_ips += 1
+    stats = login_stats()
     cred_reset = "-"
     if os.path.exists(WEB_ENV):
         try:
@@ -179,10 +212,10 @@ def security_context() -> dict:
         "bind_port": BIND_PORT,
         "public_on": BIND_ADDR in ("0.0.0.0", "::"),
         "web_user": web_user,
-        "lock_threshold": max_fails,
-        "lock_window_min": window // 60,
-        "locked_ips": locked_ips,
-        "recent_failures": recent_failures,
+        "lock_threshold": stats["lock_threshold"],
+        "lock_window_min": stats["lock_window_min"],
+        "locked_ips": stats["locked_ips"],
+        "recent_failures": stats["recent_failures"],
         "cred_reset": cred_reset,
     }
 
@@ -310,7 +343,13 @@ async def services(request: Request):
     redir = require_login(request)
     if redir:
         return redir
-    return templates.TemplateResponse(request, "services.html", common("services"))
+    ctx = common("services")
+    # 服务页内联展示 Xray 日志查看器（与参考原型一致），日志正文由 Jinja2 自动转义
+    try:
+        ctx["log_text"] = service.log("xray")
+    except Exception:
+        ctx["log_text"] = "（暂无可读取的日志）"
+    return templates.TemplateResponse(request, "services.html", ctx)
 
 
 @app.get("/security", response_class=HTMLResponse)
