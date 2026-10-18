@@ -13,7 +13,17 @@ die() { say "错误: $*" >&2; exit 1; }
 require_root() { [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "请使用 root 权限运行。"; }
 require_command() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 service_is_active() { systemctl is-active --quiet "$1" 2>/dev/null; }
-restart_if_active() { service_is_active "$1" && { systemctl restart "$1"; say "Restarted $1."; }; }
+# 只在服务运行时重启；服务未运行视为「无需处理」，必须返回 0，
+# 否则调用方在 set -e 下会因为「服务没装/没跑」而中断整条流程。
+restart_if_active() {
+  service_is_active "$1" || return 0
+  if systemctl restart "$1" 2>/dev/null; then
+    say "Restarted $1."
+  else
+    say "⚠ 重启 $1 失败（服务可能启动异常，请运行 systemctl status $1 查看）。"
+  fi
+  return 0
+}
 confirm() { local a; read -r -p "$1 [y/N]: " a; [[ "$a" =~ ^[Yy]([Ee][Ss])?$ ]]; }
 
 load_node_data() {
@@ -26,15 +36,22 @@ load_node_data() {
   done
 }
 
-# 在 env 文件中更新或追加 KEY=VALUE（值不含换行/竖线时安全：token 为 hex，URL 无 | 与 &）
+# 在 env 文件中更新或追加 KEY=VALUE。
+# 用 awk + ENVIRON 重写整行，而不是 sed 替换：值里可能出现 & | \ 等字符
+# （例如含 & 的 VLESS_URI），sed 会把 & 展开成整段匹配、把 | 当成分隔符，
+# 导致密钥/URL 被静默写坏。
 env_upsert() {
-  local f="$1" k="$2" v="$3"
+  local f="$1" k="$2" v="$3" tmp
   [[ -f "$f" ]] || install -m 0600 /dev/null "$f"
-  if grep -q "^${k}=" "$f"; then
-    sed -i "s|^${k}=.*|${k}=${v}|" "$f"
-  else
-    printf '%s=%s\n' "$k" "$v" >>"$f"
-  fi
+  tmp="$(mktemp)"
+  K="$k" V="$v" awk '
+    BEGIN { k = ENVIRON["K"]; v = ENVIRON["V"]; done = 0 }
+    index($0, k "=") == 1 { print k "=" v; done = 1; next }
+    { print }
+    END { if (!done) print k "=" v }
+  ' "$f" >"$tmp" && mv "$tmp" "$f"
+  rm -f "$tmp"
+  chmod 0600 "$f"
 }
 port_in_use() { ss -ltn 2>/dev/null | awk -v p="$1" '$4 ~ (":" p "$") { found=1 } END { exit !found }'; }
 choose_available_port() { local p; for p in 443 8443 2053 2083; do port_in_use "$p" || { echo "$p"; return; }; done; return 1; }

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #################################################
-# Proxy Manager v3.2 —— 完整卸载 (Clean Uninstall)
+# Proxy Manager —— 完整卸载 (Clean Uninstall)
+# 版本号运行时读取 VERSION，避免卸载脚本随发版漂移
 #
 # 用法:
 #   bash uninstall.sh           普通卸载（保留 data/ 便于重装）
@@ -15,6 +16,7 @@ info()  { printf "${GREEN}[%s] %s${NC}\n" "$1" "$2"; }
 warn()  { printf "${YEL}[%s] %s${NC}\n" "$1" "$2"; }
 
 BASE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+VER="$(cat "$BASE_DIR/VERSION" 2>/dev/null || echo unknown)"
 
 # ---- 参数解析 ----
 CLEAN=0
@@ -33,7 +35,7 @@ fi
 
 echo
 echo "==================================="
-echo "  Proxy Manager 完整卸载 v3.2"
+echo "  Proxy Manager 完整卸载 v$VER"
 echo "==================================="
 warn "模式" "$([ "$CLEAN" -eq 1 ] && echo '完全清理（含 data/ 节点密钥）' || echo '普通卸载（保留 data/ 便于重装）')"
 echo

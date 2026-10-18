@@ -198,6 +198,7 @@ Proxy-Manager
 - [x] **v3.2.3** 引导层：install.sh 自动安装 Web 面板并打印访问信息 / webpanel.sh 增加启动·停止·地址·凭据·重置密码管理项 / 主菜单 Web 入口标星
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
+- [x] **v3.2.10** 回归修复：`update.sh` 的 `BASE_DIR` 多算一级导致 `proxy update` 完全不可用 / `restart_if_active` 对未运行服务返回非零，导致更新流程中途退出 / 主菜单子命令失败不再带走整个程序 / `env_upsert` 改用 awk 重写（修复含 `&`、`|`、`\` 的值被写坏）/ `core.fileMode=false` 修复 chmod 导致工作树永久变脏、`git pull` 永远失败
 - [ ] **v3.3** 多节点管理 / 流量统计 / API 管理
 
 ---

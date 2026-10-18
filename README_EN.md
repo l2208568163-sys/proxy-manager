@@ -195,6 +195,7 @@ Proxy-Manager
 - [x] **v3.2.3** Guidance layer: install.sh auto-installs Web panel & prints access info / webpanel.sh gains start·stop·address·credentials·reset-password / Web entry starred in CLI menu
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
+- [x] **v3.2.10** Regression fixes: `update.sh` resolved `BASE_DIR` one level too high, making `proxy update` entirely unusable / `restart_if_active` returned non-zero for stopped services, aborting the update flow / menu no longer exits when a sub-command fails / `env_upsert` rewritten with awk (values containing `&`, `|`, `\` were silently corrupted) / `core.fileMode=false` stops chmod from keeping the work tree permanently dirty and blocking `git pull`
 - [ ] **v3.3** Multi-node management / traffic stats / API management
 
 ---

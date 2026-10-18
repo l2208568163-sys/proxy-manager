@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-BASE_DIR="${BASE_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+# 本脚本位于项目根目录，dirname 已是根（不要再拼 /..，否则会解析到上一级）
+BASE_DIR="${BASE_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
+[[ -f "$BASE_DIR/lib/common.sh" ]] || { echo "错误: 未定位到项目根目录（解析为 $BASE_DIR），请从项目目录内运行。" >&2; exit 1; }
 # shellcheck source=lib/common.sh
 source "$BASE_DIR/lib/common.sh"
 require_root
 git -C "$BASE_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "Installed project is not a Git checkout."
 say "Current version: $(<"$BASE_DIR/VERSION")"
+# install.sh 会给所有 .sh 加执行位；若 git 跟踪了 100644，每次 chmod 都会让工作树变脏，
+# 导致 git pull --ff-only 永远报 "local changes would be overwritten"。忽略文件模式差异。
+git -C "$BASE_DIR" config core.fileMode false
 git -C "$BASE_DIR" fetch --prune origin
-git -C "$BASE_DIR" pull --ff-only origin main
+if ! git -C "$BASE_DIR" pull --ff-only origin main; then
+  say "⚠ git pull 失败：本地存在未提交改动或分支已分叉。"
+  say "  查看: git -C $BASE_DIR status"
+  say "  放弃本地改动后重试: git -C $BASE_DIR checkout -- . && proxy update"
+  die "更新中止（未做任何服务重启）。"
+fi
 find "$BASE_DIR" -type f -name '*.sh' -exec chmod 0755 {} +
 systemctl daemon-reload
 restart_if_active xray; restart_if_active mihomo; restart_if_active nginx

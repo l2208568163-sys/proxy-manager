@@ -1,0 +1,21 @@
+# 统一换行符：本项目全部脚本/配置在 Linux 上运行，
+# 工作树必须保持 LF。否则在 Windows 上编辑后上传会出现
+# "env: 'bash\r': No such file or directory" 之类的 shebang 错误。
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.py    text eol=lf
+*.md    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.tpl   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.txt   text eol=lf
+VERSION text eol=lf
+
+# 二进制/图片不要做换行转换
+*.png   binary
+*.jpg   binary
+*.gz    binary
+*.zip   binary
