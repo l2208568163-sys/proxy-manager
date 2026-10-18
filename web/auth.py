@@ -3,7 +3,7 @@
 
 凭据从项目 data/web.env 读取（WEB_USER / WEB_PASS），不写死在代码里。
 web.env 缺失或无效时拒绝登录（绝不回退默认口令），并提示运行
-modules/webpanel.sh reset 生成随机口令。
+modules/panel.sh reset 生成随机口令。
 
 会话用随机令牌，存于进程内集合，cookie 仅持有令牌。
 """
@@ -81,7 +81,7 @@ def login(username: str, password: str) -> bool:
     creds = load_creds()
     if creds is None:
         print("[auth] 拒绝登录: data/web.env 缺失或无效。"
-              "请在服务器运行 modules/webpanel.sh reset 生成随机口令。")
+              "请在服务器运行 modules/panel.sh reset 生成随机口令。")
         return False
     user, pw = creds
     # 常量时间比较，避免计时侧信道

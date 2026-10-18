@@ -20,16 +20,16 @@ if ! git -C "$BASE_DIR" pull --ff-only origin main; then
 fi
 find "$BASE_DIR" -type f -name '*.sh' -exec chmod 0755 {} +
 systemctl daemon-reload
-restart_if_active xray; restart_if_active mihomo; restart_if_active nginx
+restart_if_active xray; restart_if_active nginx
 # 面板已安装过才刷新：requirements.txt 可能变化（如 python-multipart 补包）、
-# systemd 单元可能调整；webpanel.sh install 幂等，沿用已有凭据不会重置密码
+# systemd 单元可能调整；panel.sh install 幂等，沿用已有凭据不会重置密码
 if [[ -f /etc/systemd/system/proxy-web.service ]]; then
   say "刷新 Web 管理面板（依赖 + systemd 单元）..."
-  if bash "$BASE_DIR/modules/webpanel.sh" install; then
+  if bash "$BASE_DIR/modules/panel.sh" install; then
     restart_if_active proxy-web
     say "Web 面板已刷新。"
   else
-    say "⚠ Web 面板刷新失败，可稍后运行主菜单 12 → 1 重试。"
+    say "⚠ Web 面板刷新失败，可稍后运行主菜单 3 → 1 重试。"
   fi
 fi
 say "Update completed. Current version: $(<"$BASE_DIR/VERSION")"

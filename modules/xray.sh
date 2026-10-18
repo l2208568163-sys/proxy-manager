@@ -40,8 +40,9 @@ EOF
     die "Xray 未监听 $port。请检查上方日志（常见原因：端口被占用 / systemd 单元 ExecStart 被覆写 / 配置未加载）。"
   fi
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && ufw allow "$port/tcp" || true
+  # v3.3.0：generate 内部会自动发布 nginx 站点（原 modules/web.sh 的职责并入订阅模块）
   "$SCRIPT_DIR/subscription.sh" generate
-  say "Xray 已启动并在 $port 监听。订阅地址见上方输出（含随机令牌，也可在主菜单 9 查看）。"
+  say "Xray 已启动并在 $port 监听。订阅地址见上方输出（含随机令牌，也可在主菜单 5 查看）。"
 }
 require_root
 while true; do

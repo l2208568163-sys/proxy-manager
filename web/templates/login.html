@@ -13,7 +13,7 @@
     <h1>Proxy Manager</h1>
     <p class="login-sub">服务器管理控制台 · v{{ version }}</p>
     {% if no_creds %}
-      <p class="err">未检测到 data/web.env，登录已被拒绝。<br>请在服务器运行 <code>modules/webpanel.sh reset</code> 生成随机口令。</p>
+      <p class="err">未检测到 data/web.env，登录已被拒绝。<br>请在服务器运行 <code>modules/panel.sh reset</code> 生成随机口令。</p>
     {% elif error %}
       <p class="err">{{ error }}</p>
     {% endif %}
