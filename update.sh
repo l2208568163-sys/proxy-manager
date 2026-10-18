@@ -29,7 +29,11 @@ if [[ -f /etc/systemd/system/proxy-web.service ]]; then
     restart_if_active proxy-web
     say "Web 面板已刷新。"
   else
-    say "⚠ Web 面板刷新失败，可稍后运行主菜单 3 → 1 重试。"
+    # 跨版本升级时，正在执行的可能是旧版 update.sh（引用的模块文件名可能已变，
+    # 例如 v3.3.0 把 webpanel.sh 更名 panel.sh）。此时文件已在 pull 中就位，
+    # 重跑一次即可用新版脚本完成刷新。
+    say "⚠ Web 面板刷新失败。若本次为跨版本升级，请再运行一次 proxy update 完成刷新；"
+    say "  或直接执行: proxy → 3（Web 管理中心）→ 1"
   fi
 fi
 say "Update completed. Current version: $(<"$BASE_DIR/VERSION")"
