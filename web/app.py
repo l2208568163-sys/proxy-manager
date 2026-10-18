@@ -40,7 +40,7 @@ if os.path.exists(VERSION_FILE):
     with open(VERSION_FILE, encoding="utf-8") as f:
         APP_VERSION = f.read().strip() or "-"
 
-SERVICES = [("xray", "Xray"), ("mihomo", "Mihomo"), ("AdGuardHome", "AdGuard DNS")]
+SERVICES = [("xray", "Xray"), ("nginx", "Nginx"), ("proxy-web", "Web 面板")]
 
 
 def service_status(name: str) -> str:
@@ -127,7 +127,7 @@ async def login_submit(request: Request, username: str = Form(...), password: st
         return resp
     auth.record_failure(ip)
     if not auth.creds_exist():
-        error = "未检测到 data/web.env，登录已被拒绝。请在服务器运行 modules/webpanel.sh reset 生成随机口令。"
+        error = "未检测到 data/web.env，登录已被拒绝。请在服务器运行 modules/panel.sh reset 生成随机口令。"
     else:
         error = "用户名或密码错误"
     return templates.TemplateResponse(

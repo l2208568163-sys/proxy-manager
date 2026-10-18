@@ -1,13 +1,13 @@
 # 🚀 Proxy-Manager
 
 <p align="center">
-  <b>One-click deployment tool for Xray Reality + Mihomo + Clash subscription + Web dashboard on Ubuntu Server</b>
+  <b>One-click deployment tool for Xray Reality + Clash subscription + Web dashboard on Ubuntu Server</b>
 </p>
 
 <p align="center">
   <a href="https://github.com/l2208568163-sys/proxy-manager"><img src="https://img.shields.io/github/stars/l2208568163-sys/proxy-manager" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/l2208568163-sys/proxy-manager" alt="GitHub license"></a>
-  <img src="https://img.shields.io/badge/version-3.2.9-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.3.0-blue" alt="Version">
 </p>
 
 <p align="center">
@@ -23,13 +23,14 @@ Proxy-Manager is an automated proxy-node management tool for Ubuntu Server. It t
 It helps you deploy:
 
 - **Xray Reality** nodes (VLESS + Reality + Vision)
-- **Mihomo** (Clash Meta) client
-- **Clash URL subscription** (HTTP subscription file)
-- **AdGuard Home** DNS
-- **BBR** network optimization
-- **Web management dashboard** (since v3.2, with login auth)
+- **Clash URL subscription** (random-token path, auto-published via nginx)
+- **BBR** network optimization (enabled during install)
+- **Web management dashboard** (with login auth)
 
 > Goal: deploy and manage a server proxy environment with one command.
+> Since v3.3.0 the project focuses on its core: the Mihomo client and DNS
+> management modules were removed, and system optimization / security hardening
+> moved into the installer. See the Roadmap.
 
 ---
 
@@ -41,27 +42,20 @@ It helps you deploy:
 - Picks a free port from `443 / 8443 / 2053 / 2083`
 - Validates the Xray config before writing, and generates a VLESS URI + node info file
 
-### 🌐 Clash Subscription
+### 🌐 Clash Subscription & Publishing
 - Compatible with Clash Verge, Clash Meta, Mihomo Party, etc.
 - Auto-generates a subscription URL with a **random token**: `http://SERVER_IP/clash/<token>/config.yaml` — the path is unguessable, keeping node credentials safe from scanners
+- After generation the nginx site is configured and published automatically (idempotent, auto-rollback on failure)
 - Paste the URL to import
 
-### 🚀 Mihomo
-- TUN mode, Fake-IP DNS, auto-routing, rule-based split
-- Installs the core first, then validates the subscription URL before starting
-
-### 🛡 DNS Optimization
-- System DNS (Cloudflare + opportunistic DoT)
-- Optional AdGuard Home (DoH / DNS cache)
-
-### ⚡ System Optimization
-- BBR, TCP Fast Open, FQ queue
-- Fail2ban and unattended-upgrades (security module)
+### ⚡ System-level optimization (during install)
+- BBR, TCP Fast Open, FQ queue (enabled by default)
+- Optional `--harden`: Fail2ban and unattended-upgrades
 
 ### 🖥 Web Dashboard (v3.2 / v3.2.1)
 - Service status, CPU, memory, network monitoring
 - **Login auth** (random session token; credentials in `data/web.env`)
-- Restart services and view Xray/Mihomo logs online
+- Restart services and view Xray/Nginx logs online
 - One-click copy of the Clash subscription, node QR code
 
 ---
@@ -77,9 +71,11 @@ It helps you deploy:
 ```bash
 git clone https://github.com/l2208568163-sys/proxy-manager.git
 cd proxy-manager
-bash install.sh
+bash install.sh                 # standard install (includes BBR)
+bash install.sh --harden        # additionally install fail2ban / unattended-upgrades
+bash install.sh --update-system # upgrade system packages first
 ```
-The installer: installs dependencies → deploys the project → creates the `proxy` command → creates the subscription dir `/var/www/html/clash`.
+The installer: installs dependencies → enables BBR → deploys the project → creates the `proxy` command → creates the subscription dir `/var/www/html/clash` → installs the web dashboard.
 
 ---
 
@@ -90,23 +86,19 @@ Launch the menu:
 proxy
 ```
 
-Main menu:
+Main menu (v3.3.0, simplified):
 ```
 ================================
- Proxy Manager v3.2.1
+ Proxy Manager v3.3.0
 ================================
+Services — Xray:running | Dashboard:running | Nginx:running
  1. Xray Reality
- 2. Clash Subscription
- 3. Mihomo
- 4. DNS
- 5. System Optimization
- 6. Security Hardening
- 7. Web Subscription Service
- 8. Health Check
- 9. Node Information
-10. Update
-11. Uninstall
-12. Web Dashboard
+ 2. Clash Subscription & Publishing
+ 3. Web Dashboard ⭐
+ 4. Health Check
+ 5. Node Information
+ 6. Update
+ 7. Uninstall
  0. Exit
 ```
 
@@ -124,14 +116,14 @@ proxy --help      # help
 ---
 
 ## 📱 Clash Import
-After installation you get a subscription URL with a random token (like `http://SERVER_IP/clash/<token>/config.yaml`; view it in menu 9 or the web dashboard):
+After installation you get a subscription URL with a random token (like `http://SERVER_IP/clash/<token>/config.yaml`; view it in menu 5 or the web dashboard):
 
 In Clash Verge: `Profiles → New Profile → URL → paste the subscription URL`.
 
 ---
 
 ## 🖥 Web Dashboard
-The dashboard **binds to `127.0.0.1:8080` only** by default — it is not exposed publicly. The random password is generated and printed on first setup (`Menu → 12. Web Dashboard → 1`).
+The dashboard **binds to `127.0.0.1:8080` only** by default — it is not exposed publicly. The random password is generated and printed on first setup (`Menu → 3. Web Dashboard → 1`).
 
 Access via SSH tunnel (recommended):
 ```bash
@@ -139,7 +131,7 @@ ssh -L 8080:127.0.0.1:8080 user@SERVER_IP
 # then open http://localhost:8080
 ```
 
-To expose it publicly: `proxy` → 12 → 7 toggles "public access" (binds `0.0.0.0` and opens 8080). Turn it off when not needed, or put a TLS-terminating reverse proxy in front.
+To expose it publicly: `proxy` → 3 → 7 toggles "public access" (binds `0.0.0.0` and opens 8080). Turn it off when not needed, or put a TLS-terminating reverse proxy in front.
 
 Features: service status, resource monitoring, online restart, log viewing, subscription copy, node QR code.
 
@@ -157,16 +149,10 @@ Proxy-Manager
 ├── lib/
 │   └── common.sh        shared functions
 ├── modules/
-│   ├── xray.sh          Xray Reality
-│   ├── subscription.sh  Clash subscription
-│   ├── mihomo.sh        Mihomo client
-│   ├── dns.sh           DNS / AdGuard Home
-│   ├── system.sh        system optimization
-│   ├── security.sh      security hardening
-│   ├── web.sh           Nginx subscription service
-│   └── webpanel.sh      Web dashboard deployment
-├── configs/             reference templates
-├── docs/                docs
+│   ├── xray.sh          Xray Reality node
+│   ├── subscription.sh  Clash subscription + nginx publishing
+│   └── panel.sh         web dashboard deployment
+├── docs/                docs (docs/legacy/ holds historical material)
 ├── tests/
 │   └── check.sh         health check
 └── web/                 FastAPI dashboard
@@ -181,8 +167,8 @@ Proxy-Manager
 ## 🔐 Security
 - **Never upload** `data/node.env` and `data/web.env`: the former holds `PRIVATE_KEY` / `UUID`, the latter holds the dashboard password.
 - **The subscription URL contains a random token and is a node credential** — do not share it publicly. If leaked, regenerate the subscription and rotate `SUB_TOKEN`.
-- This repo's `.gitignore` already excludes `data/web.env`, `data/node.env`, `web/venv/`, `__pycache__/`.
-- Use SSH keys, open only required ports, and keep system / Xray / Mihomo / AdGuard Home updated.
+- This repo's `.gitignore` already excludes `data/`, `web/venv/`, `__pycache__/`, `outputs/`.
+- Use SSH keys, open only required ports, and keep the system and Xray updated.
 - This project gives no guarantee of anonymity or circumvention of local laws; comply with applicable laws and provider rules.
 
 ---
@@ -196,7 +182,8 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.2.10** Regression fixes: `update.sh` resolved `BASE_DIR` one level too high, making `proxy update` entirely unusable / `restart_if_active` returned non-zero for stopped services, aborting the update flow / menu no longer exits when a sub-command fails / `env_upsert` rewritten with awk (values containing `&`, `|`, `\` were silently corrupted) / `core.fileMode=false` stops chmod from keeping the work tree permanently dirty and blocking `git pull`
-- [ ] **v3.3** Multi-node management / traffic stats / API management
+- [x] **v3.3.0** Simplification refactor: removed the Mihomo client and DNS/AdGuard modules (wrong role on a server node, port-53 conflicts, TUN once took down SSH) / removed `server-fix-proxy.sh` and unreferenced config templates / BBR moved into install.sh by default, fail2ban now behind the explicit `--harden` flag / nginx publishing merged into `subscription.sh` (auto-publish after generation) / `webpanel.sh` renamed to `panel.sh` / main menu trimmed from 12 to 7 items / LF enforced via `.gitattributes`
+- [ ] **v3.4** Multi-node management / traffic stats / API management
 
 ---
 

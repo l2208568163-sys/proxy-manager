@@ -159,7 +159,7 @@ case "${1:-}" in
   public-on)  require_root; set_public_access on; exit 0;;
   public-off) require_root; set_public_access off; exit 0;;
   "") ;;
-  *) die "Usage: webpanel.sh [install|start|stop|restart|status|address|creds|reset|public-on|public-off]";;
+  *) die "Usage: panel.sh [install|start|stop|restart|status|address|creds|reset|public-on|public-off]";;
 esac
 
 require_root

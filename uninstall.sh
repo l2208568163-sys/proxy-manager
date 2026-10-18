@@ -47,6 +47,8 @@ if [[ "$CONFIRM" != "yes" ]]; then
 fi
 
 # ---- 1/11 停止并禁用服务 ----
+# mihomo / AdGuardHome / fail2ban 自 v3.3.0 起已不再安装，这里保留 stop/disable
+# 以便清理「旧版本装过」的机器（对没装过的机器是无害 no-op）
 info "1/11" "停止并禁用相关服务"
 SERVICES=(xray mihomo AdGuardHome nginx proxy-web fail2ban)
 for s in "${SERVICES[@]}"; do
@@ -65,12 +67,12 @@ systemctl daemon-reload 2>/dev/null || true
 info "3/11" "删除 Xray"
 rm -rf /usr/local/bin/xray /usr/local/etc/xray
 
-# ---- 4/11 删除 Mihomo ----
-info "4/11" "删除 Mihomo"
+# ---- 4/11 删除 Mihomo（legacy：仅旧版本装过）----
+info "4/11" "删除 Mihomo（如存在）"
 rm -rf /usr/local/bin/mihomo /etc/mihomo /var/log/mihomo
 
-# ---- 5/11 删除 AdGuard Home ----
-info "5/11" "删除 AdGuard Home"
+# ---- 5/11 删除 AdGuard Home（legacy：仅旧版本装过）----
+info "5/11" "删除 AdGuard Home（如存在）"
 if [[ -x /opt/AdGuardHome/AdGuardHome ]]; then
   /opt/AdGuardHome/AdGuardHome -s uninstall 2>/dev/null || true
 fi
@@ -92,12 +94,13 @@ nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || true
 info "7/11" "删除 Web 管理面板"
 rm -rf "$BASE_DIR/web" /var/log/proxy-manager
 
-# ---- 8/11 删除 DNS 解析器覆盖 ----
-info "8/11" "删除 DNS 解析器覆盖"
+# ---- 8/11 删除 DNS 解析器覆盖（legacy：仅旧版本写过）----
+info "8/11" "删除 DNS 解析器覆盖（如存在）"
 rm -f /etc/systemd/resolved.conf.d/proxy-manager.conf
 systemctl restart systemd-resolved 2>/dev/null || true
 
 # ---- 9/11 清理防火墙规则 ----
+# 7890/3000/53 为已移除模块（Mihomo/AdGuardHome/DNS）的历史端口，保留清理以兼容旧部署
 info "9/11" "清理防火墙规则"
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'Status: active'; then
   for p in 443 80 7890 8080 3000 53; do

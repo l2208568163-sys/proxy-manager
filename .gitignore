@@ -8,9 +8,9 @@ web/venv/
 data/
 logs/
 
+# 交付产物（节点信息卡片等），属本地输出不进仓库
+outputs/
+
 # 密钥 / 证书（运行时生成）
 *.key
 *.pem
-
-# 注意：configs/ 下的 *.yaml / *.tpl 是项目源模板（如 mihomo-client.yaml、
-# xray-reality.json.tpl），必须保持跟踪，不要 ignore。

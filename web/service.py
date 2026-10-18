@@ -5,7 +5,7 @@
 """
 import subprocess
 
-ALLOWED = {"xray", "mihomo", "AdGuardHome", "proxy-web"}
+ALLOWED = {"xray", "nginx", "proxy-web"}
 
 
 def _guard(service: str) -> None:

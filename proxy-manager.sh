@@ -23,26 +23,24 @@ run_cmd() {
 }
 while true; do
   clr; say "================================"; say " 代理管理器 Proxy Manager v$(<"$BASE_DIR/VERSION")"; say "================================"
-  say "服务状态 — Xray:$(svc xray) | Mihomo:$(svc mihomo) | AdGuardDNS:$(svc AdGuardHome) | Web面板:$(svc proxy-web) | Nginx:$(svc nginx)"
-  say "1. Xray Reality 节点"; say "2. Clash 订阅"; say "3. Mihomo 客户端"; say "4. DNS 管理"; say "5. 系统优化"; say "6. 安全加固"; say "7. Web 订阅服务"; say "8. 健康检查"; say "9. 查看节点信息"; say "10. 更新程序"; say "11. 卸载 Proxy Manager"; say "12. Web 管理中心 ⭐"; say "0. 退出"
+  say "服务状态 — Xray:$(svc xray) | Web面板:$(svc proxy-web) | Nginx:$(svc nginx)"
+  # v3.3.0 精简重构：Mihomo 客户端 / DNS 管理 / 系统优化 / 安全加固 / Web 订阅服务
+  # 五项移除 —— 依次并入 install.sh（BBR、--harden）与 subscription.sh（publish），
+  # 理由与对照见 outputs/功能必要性评估-v3.2.10.md
+  say "1. Xray Reality 节点"; say "2. Clash 订阅与发布"; say "3. Web 管理中心 ⭐"; say "4. 健康检查"; say "5. 查看节点信息"; say "6. 更新程序"; say "7. 卸载 Proxy Manager"; say "0. 退出"
   read -r -p "请选择: " c || exit 0
   case "$c" in
     1) run_cmd "Xray 节点" "$BASE_DIR/modules/xray.sh";;
-    2) run_cmd "Clash 订阅" "$BASE_DIR/modules/subscription.sh";;
-    3) run_cmd "Mihomo 客户端" "$BASE_DIR/modules/mihomo.sh";;
-    4) run_cmd "DNS 管理" "$BASE_DIR/modules/dns.sh";;
-    5) run_cmd "系统优化" "$BASE_DIR/modules/system.sh";;
-    6) run_cmd "安全加固" "$BASE_DIR/modules/security.sh";;
-    7) run_cmd "Web 订阅服务" "$BASE_DIR/modules/web.sh";;
-    8) run_cmd "健康检查" "$BASE_DIR/tests/check.sh";;
-    9) if load_node_data; then
+    2) run_cmd "Clash 订阅与发布" "$BASE_DIR/modules/subscription.sh";;
+    3) run_cmd "Web 管理中心" "$BASE_DIR/modules/panel.sh";;
+    4) run_cmd "健康检查" "$BASE_DIR/tests/check.sh";;
+    5) if load_node_data; then
          say "订阅地址: ${SUBSCRIPTION_URL:-（尚未生成，请运行主菜单 2 重新生成订阅）}"
          say "$VLESS_URI"
        fi
        pause;;
-    10) run_cmd "更新程序" "$BASE_DIR/update.sh";;
-    11) exec "$BASE_DIR/uninstall.sh";;
-    12) run_cmd "Web 管理中心" "$BASE_DIR/modules/webpanel.sh";;
+    6) run_cmd "更新程序" "$BASE_DIR/update.sh";;
+    7) exec "$BASE_DIR/uninstall.sh";;
     0) exit;;
     *) say "无效选择。";;
   esac

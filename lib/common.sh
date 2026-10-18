@@ -5,8 +5,6 @@ DATA_DIR="$BASE_DIR/data"
 NODE_FILE="$DATA_DIR/node.env"
 WEB_ROOT="${WEB_ROOT:-/var/www/html/clash}"
 XRAY_CONFIG="${XRAY_CONFIG:-/usr/local/etc/xray/config.json}"
-MIHOMO_DIR="${MIHOMO_DIR:-/etc/mihomo}"
-MIHOMO_CONFIG="$MIHOMO_DIR/config.yaml"
 
 say() { printf '%s\n' "$*"; }
 die() { say "错误: $*" >&2; exit 1; }

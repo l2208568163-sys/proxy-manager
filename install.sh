@@ -64,12 +64,17 @@ esac
 # Parse args / update prompt
 ####################################################
 UPDATE_SYS=false
-case "${1:-}" in
-  --update-system) UPDATE_SYS=true ;;
-  --help|-h) echo "Usage: bash install.sh [--update-system]"; exit 0 ;;
-  "") ;;
-  *) error "未知参数: ${1}（用法: bash install.sh [--update-system]）" ;;
-esac
+HARDEN=false
+for arg in "$@"; do
+  case "$arg" in
+    --update-system) UPDATE_SYS=true ;;
+    # 安全加固（fail2ban + 自动安全更新）改为显式开关：
+    # unattended-upgrades 会自动重启服务，对长期跑节点的机器是隐雷，默认不装（原 modules/security.sh 并入于此）
+    --harden) HARDEN=true ;;
+    --help|-h) echo "Usage: bash install.sh [--update-system] [--harden]"; exit 0 ;;
+    *) error "未知参数: ${arg}（用法: bash install.sh [--update-system] [--harden]）" ;;
+  esac
+done
 if [[ "$UPDATE_SYS" == false && -t 0 ]]; then
   read -r -p "是否更新系统软件源? (y/n): " ans
   [[ "$ans" =~ ^[Yy] ]] && UPDATE_SYS=true
@@ -90,10 +95,11 @@ fi
 ####################################################
 # Install Dependencies
 ####################################################
+# v3.3.0 精简：wget/net-tools 全程未使用，gzip/tar/jq 只服务已移除的
+# mihomo 模块，python3-pip 由 venv 内置 ensurepip 覆盖 —— 依赖 14 -> 9
 info "安装依赖"
 apt-get install -y --no-install-recommends \
-  ca-certificates curl wget git gzip tar jq openssl \
-  iproute2 ufw nginx python3 python3-pip python3-venv net-tools
+  ca-certificates curl git openssl iproute2 ufw nginx python3 python3-venv
 
 ####################################################
 # Backup Existing (keep node data)
@@ -138,11 +144,35 @@ install -d -m 0700 "$INSTALL_DIR/data"
 install -d -m 0755 "$INSTALL_DIR/logs"
 
 ####################################################
+# Network tuning (BBR + fq + TFO) — 幂等
+# 原 modules/system.sh 并入于此：一次性系统级动作不需要常驻菜单
+####################################################
+info "启用 BBR 与 TCP Fast Open"
+cat >/etc/sysctl.d/99-proxy-manager.conf <<'EOF'
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+net.ipv4.tcp_fastopen=3
+EOF
+sysctl --system >/dev/null || warn "sysctl 应用失败，BBR 未生效（可稍后手动执行 sysctl --system）"
+
+####################################################
+# Optional security hardening (--harden)
+####################################################
+if [[ "$HARDEN" == true ]]; then
+  info "安全加固（--harden）"
+  apt-get install -y fail2ban unattended-upgrades
+  systemctl enable --now fail2ban
+  info "fail2ban 与自动安全更新已启用"
+else
+  info "跳过安全加固（如需 fail2ban / 自动安全更新，加 --harden 重新运行）"
+fi
+
+####################################################
 # Install Web Dashboard (auto, best-effort)
 ####################################################
-if [[ -f "$INSTALL_DIR/modules/webpanel.sh" ]]; then
+if [[ -f "$INSTALL_DIR/modules/panel.sh" ]]; then
   info "安装 Web 管理面板"
-  bash "$INSTALL_DIR/modules/webpanel.sh" install || warn "Web 面板安装失败，可稍后运行 proxy 主菜单 12 重新安装"
+  bash "$INSTALL_DIR/modules/panel.sh" install || warn "Web 面板安装失败，可稍后运行 proxy 主菜单 3 重新安装"
 fi
 
 ####################################################
@@ -196,10 +226,10 @@ if [[ -f "$INSTALL_DIR/data/web.env" ]]; then
   else
     echo "Web 控制台: 默认仅本机监听 127.0.0.1:8080"
     echo "  访问方式: ssh -L 8080:127.0.0.1:8080 用户@$IP 后打开 http://localhost:8080"
-    echo "  公网访问: proxy → 12 → 7 开启『公网访问开关』"
+    echo "  公网访问: proxy → 3（Web 管理中心）→ 7 开启『公网访问开关』"
   fi
 fi
 echo
-echo "下一步: 运行 proxy 打开主菜单；选 1 生成 Xray 节点、选 2 生成 Clash 订阅、选 12 管理 Web 面板"
+echo "下一步: 运行 proxy 打开主菜单；选 1 生成 Xray 节点（订阅会自动生成并发布）、选 3 管理 Web 面板"
 echo "========================================
 "
