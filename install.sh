@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 ####################################################
 #
-# Proxy-Manager v3.2.2
-# Installation Script
+# Proxy-Manager
+# Installation Script（版本号统一取自 VERSION 文件）
 #
 ####################################################
 
@@ -112,6 +112,9 @@ fi
 ####################################################
 if [[ -d "$INSTALL_DIR/.git" ]]; then
   info "更新项目 (git pull --ff-only)"
+  # 忽略文件模式差异：本脚本后面会给所有 .sh 加执行位，若 git 跟踪的是 100644，
+  # 每次安装都会把工作树变脏，让后续 update.sh 的 git pull 永远失败。
+  git -C "$INSTALL_DIR" config core.fileMode false
   git -C "$INSTALL_DIR" pull --ff-only
 else
   if [[ -e "$INSTALL_DIR" ]]; then
@@ -119,6 +122,7 @@ else
     rm -rf "$INSTALL_DIR"
   fi
   git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+  git -C "$INSTALL_DIR" config core.fileMode false
   # 还原节点数据（仅替换安装时）
   if [[ -n "$BACKUP" && -d "$BACKUP/data" ]]; then
     cp -r "$BACKUP/data/." "$INSTALL_DIR/data/" 2>/dev/null || true

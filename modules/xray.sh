@@ -48,8 +48,15 @@ while true; do
   clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "0. 返回"
   read -r -p "请选择: " c
   case "$c" in
-    1) install_xray; read -r -p "请按回车继续..." _;; 2) load_node_data; say "$VLESS_URI"; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先运行选项 1 或订阅菜单生成。}"; read -r -p "请按回车继续..." _;;
+    1) install_xray; read -r -p "请按回车继续..." _;;
+    2) if load_node_data; then say "$VLESS_URI"; say "${SUBSCRIPTION_URL:-订阅尚未生成，请先运行选项 1 或订阅菜单生成。}"; fi; read -r -p "请按回车继续..." _;;
     3) systemctl restart xray;; 4) systemctl --no-pager status xray || true; read -r -p "请按回车继续..." _;;
-    5) confirm "Remove Xray and generated node data?" && { bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge; rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"; };; 0) exit;; *) say "无效选择。";;
+    5) if confirm "Remove Xray and generated node data?"; then
+         bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge
+         rm -f "$NODE_FILE" "$WEB_ROOT/config.yaml"
+       else
+         say "已取消。"
+       fi;;
+    0) exit;; *) say "无效选择。";;
   esac
 done
