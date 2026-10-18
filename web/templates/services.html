@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}服务 · Proxy Manager 控制台{% endblock %}
+{% block page_title %}服务{% endblock %}
+{% block page_sub %}系统服务状态、重启与日志查看{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <div><h1>服务</h1><p>系统服务状态、重启与日志查看</p></div>
+    <div class="head-actions"><button class="btn ghost sm" onclick="toast('已刷新状态')">刷新状态</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px">
+    <table class="tbl">
+      <thead><tr><th>服务</th><th>Unit</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>
+        {% for s in services %}
+        <tr>
+          <td><b>{{ s.label }}</b></td>
+          <td class="mono">{{ s.key }}.service</td>
+          {% if s.state=='active' %}<td><span class="pill ok"><span class="dot pulse"></span>运行中</span></td>
+          {% else %}<td><span class="pill bad"><span class="dot"></span>未运行</span></td>{% endif %}
+          <td style="display:flex;gap:8px">
+            <button class="btn ghost sm" onclick="openRestart('{{ s.label }}','{{ s.key }}')">重启</button>
+            <a class="btn secondary sm" href="/logs/{{ s.key }}">日志</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">日志查看器</div>
+    <p class="tertiary" style="font-size:13px">选择服务后查看实时日志。日志输出已做 HTML 转义，防止日志注入 XSS。</p>
+    <div class="btnrow" style="margin-top:12px">
+      {% for s in services %}<a class="btn secondary sm" href="/logs/{{ s.key }}">{{ s.label }} 日志</a>{% endfor %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}概览 · Proxy Manager 控制台{% endblock %}
+{% block page_title %}概览{% endblock %}
+{% block page_sub %}实时掌握节点、订阅与服务运行状态{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <div><h1>概览</h1><p>实时掌握节点、订阅与服务运行状态</p></div>
+    <div class="head-actions">
+      <button class="btn ghost sm" onclick="toast('已刷新数据')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg> 刷新</button>
+      <a class="btn primary sm" href="/subs">管理订阅</a>
+    </div>
+  </div>
+
+  <!-- 指标卡（真实数据） -->
+  <div class="grid cols-4" style="margin-bottom:18px">
+    <div class="card stat hoverable">
+      <div class="lab">节点在线率</div>
+      <div class="val tnum">{{ online_rate }}<span class="u">%</span></div>
+      <div class="delta {% if online_rate==100 %}up{% else %}down{% endif %}">{% if online_rate==100 %}▲ 服务正常{% else %}▼ 检查 Xray{% endif %}</div>
+    </div>
+    <div class="card stat hoverable">
+      <div class="lab">CPU 使用率</div>
+      <div class="val tnum">{{ cpu|round(1) }}<span class="u">%</span></div>
+      <div class="delta flat">实时采样</div>
+    </div>
+    <div class="card stat hoverable">
+      <div class="lab">内存使用率</div>
+      <div class="val tnum">{{ memory|round(1) }}<span class="u">%</span></div>
+      <div class="delta flat">实时采样</div>
+    </div>
+    <div class="card stat hoverable">
+      <div class="lab">网络累计</div>
+      <div class="val tnum">{{ net_total }}<span class="u">GB</span></div>
+      <div class="delta flat">↓{{ net_recv }} / ↑{{ net_sent }}</div>
+    </div>
+  </div>
+
+  <!-- 服务健康 + 资源监控 -->
+  <div class="grid cols-2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="eyebrow">服务健康</div>
+      {% for s in services %}
+      <div class="svc-row">
+        <div class="svc-ic">
+          {% if s.key=='xray' %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-4 8-8 10-4-2-8-5-8-10V6l8-4Z"/></svg>
+          {% elif s.key=='nginx' %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+          {% else %}<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>{% endif %}
+        </div>
+        <div class="svc-main"><div class="nm">{{ s.label }}</div><div class="mt mono">{{ s.key }}.service</div></div>
+        {% if s.state=='active' %}<span class="pill ok"><span class="dot pulse"></span>运行中</span>
+        {% else %}<span class="pill bad"><span class="dot"></span>未运行</span>{% endif %}
+        <div class="svc-act">
+          <button class="btn ghost sm" onclick="openRestart('{{ s.label }}','{{ s.key }}')">重启</button>
+          <a class="btn secondary sm" href="/logs/{{ s.key }}">日志</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">资源监控</div>
+      <div class="gauge">
+        <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="#3B9EFF" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="{{ (169.6*(100-cpu)/100)|round(1) }}"/></svg><span class="pct tnum">{{ cpu|round(0) }}%</span></div>
+        <div class="gl"><div class="gt"><span class="muted">CPU</span><b class="tnum">{{ cpu|round(1) }}%</b></div><div class="track"><i style="width:{{ cpu }}%"></i></div></div>
+      </div>
+      <div class="gauge">
+        <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="#22D3EE" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="{{ (169.6*(100-memory)/100)|round(1) }}"/></svg><span class="pct tnum">{{ memory|round(0) }}%</span></div>
+        <div class="gl"><div class="gt"><span class="muted">内存</span><b class="tnum">{{ memory|round(1) }}%</b></div><div class="track"><i style="width:{{ memory }}%"></i></div></div>
+      </div>
+      <div class="net-flow">
+        <div><div class="l">↓ 接收</div><div class="n tnum">{{ net_recv }}</div></div>
+        <div><div class="l">↑ 发送</div><div class="n tnum">{{ net_sent }}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reality 节点 + Clash 订阅 -->
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="eyebrow">Reality 节点</div>
+      <div class="kv"><span class="k">节点名称</span><span class="v">{{ node_name }}</span></div>
+      <div class="kv"><span class="k">服务器</span><span class="v mono">{{ server }}</span></div>
+      <div class="kv"><span class="k">端口 / 协议</span><span class="v mono">{{ port }} · TCP · VLESS+Reality</span></div>
+      <div class="kv"><span class="k">SNI</span><span class="v mono">{{ sni }}</span></div>
+      <div class="kv"><span class="k">UUID</span><span class="v mono copyable">{{ uuid }}<button class="copy-btn" onclick="copyText('uuidTxt')">复制</button></span></div>
+      <span id="uuidTxt" style="display:none">{{ uuid }}</span>
+      <div style="margin-top:14px"><a class="btn secondary sm" href="/nodes">查看节点详情</a></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Clash 订阅</div>
+      {% if sub_ready %}
+      <div class="sub-box">
+        <div class="sub-url">
+          <code id="subUrl">{{ clash }}</code>
+          <div class="acts"><button class="btn primary sm" onclick="copyText('subUrl')">复制订阅地址</button><a class="btn ghost sm" href="/subs">轮换令牌</a></div>
+        </div>
+        <div style="text-align:center">
+          {% if qr %}<img class="qr" src="{{ qr }}" alt="订阅二维码">{% else %}<div class="qr ph">二维码<br>生成中</div>{% endif %}
+          <p class="tertiary" style="font-size:11.5px;margin-top:8px">手机扫码导入</p>
+        </div>
+      </div>
+      {% else %}
+      <p class="hint tertiary">订阅尚未生成或缺少随机令牌。请在服务器运行 <code>proxy</code> → 主菜单 2 重新生成订阅。</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

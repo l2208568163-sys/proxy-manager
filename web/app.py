@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Proxy Manager Web 管理面板 (FastAPI)。
 
-功能：登录认证、服务状态与资源监控、服务重启（POST + 前端确认）、日志查看
-（输出经 HTML 转义，防日志注入 XSS）、订阅一键复制与二维码。
+多页控制台：概览 / 节点 / 订阅 / 服务 / 安全 / 设置 + 登录、注销、服务重启、日志。
 
-- 版本号统一从项目根 VERSION 文件读取，不在模板里硬编码。
-- 订阅地址包含随机令牌（node.env 的 SUB_TOKEN），路径不可猜测。
+- 登录认证、IP 失败限速、进程内会话令牌（见 auth.py）
+- 服务重启为 POST + 前端确认（samesite=lax cookie 防跨站 CSRF）
+- 日志输出经 Jinja2 自动转义，防日志注入 XSS
+- 订阅地址含随机令牌（node.env 的 SUB_TOKEN），路径不可猜测
+
+版本号从项目根 VERSION 读取；监听地址读取自 data/web.env 的 WEB_BIND
+（与 modules/panel.sh 的 read_web_bind 同源），端口默认 8080。
 """
 import html
 import os
 import subprocess
+import time
 
 import psutil
 from fastapi import FastAPI, Form, Request
@@ -21,13 +26,40 @@ import auth
 import qrgen
 import service
 
-# BASE_DIR = 项目根目录（web/ 的上一级）
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NODE_FILE = os.path.join(BASE_DIR, "data", "node.env")
+WEB_ENV = os.path.join(BASE_DIR, "data", "web.env")
 VERSION_FILE = os.path.join(BASE_DIR, "VERSION")
 WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(WEB_DIR, "static")
 TEMPLATES_DIR = os.path.join(WEB_DIR, "templates")
+
+# 面板监听端口（modules/panel.sh 里写死 8080）；地址与 panel.sh 同源：优先环境变量
+# BIND_ADDR，否则回退到 web.env 的 WEB_BIND，最终默认仅本机 127.0.0.1。
+DEFAULT_BIND = "127.0.0.1"
+BIND_PORT = os.environ.get("BIND_PORT", "8080")
+
+
+def read_web_bind() -> str:
+    """与 modules/panel.sh 的 read_web_bind 同源：从 data/web.env 读取 WEB_BIND。"""
+    if not os.path.exists(WEB_ENV):
+        return DEFAULT_BIND
+    bind = DEFAULT_BIND
+    try:
+        with open(WEB_ENV, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                if k.strip() == "WEB_BIND":
+                    bind = v.strip() or DEFAULT_BIND
+    except Exception:
+        pass
+    return bind
+
+
+BIND_ADDR = os.environ.get("BIND_ADDR") or read_web_bind()
 
 # 关闭公开的 API 文档页，减少暴露面
 app = FastAPI(title="Proxy Manager", docs_url=None, redoc_url=None)
@@ -52,6 +84,10 @@ def service_status(name: str) -> str:
         return out.decode().strip()
     except Exception:
         return "inactive"
+
+
+def service_list():
+    return [{"key": k, "label": l, "state": service_status(k)} for k, l in SERVICES]
 
 
 def get_node() -> dict:
@@ -92,6 +128,82 @@ def human(n: float) -> str:
     return f"{n:.1f} PB"
 
 
+def dashboard_context() -> dict:
+    node = get_node()
+    clash = subscription_url(node)
+    sent, recv = net_stats()
+    xray_active = service_status("xray") == "active"
+    return {
+        "node": node,
+        "node_name": node.get("NODE_NAME", "-"),
+        "server": node.get("SERVER", "-"),
+        "port": node.get("PORT", "-"),
+        "sni": node.get("SNI", "-"),
+        "uuid": node.get("UUID", "-"),
+        "clash": clash,
+        "sub_ready": bool(clash),
+        "qr": qrgen.data_uri(clash) if clash else None,
+        # 节点在线率：核心代理服务 Xray 在运行即视为主节点在线
+        "online_rate": 100 if xray_active else 0,
+        "cpu": psutil.cpu_percent(),
+        "memory": psutil.virtual_memory().percent,
+        "net_recv": human(recv),
+        "net_sent": human(sent),
+        "net_total": round((sent + recv) / (1024 ** 3), 1),
+    }
+
+
+def security_context() -> dict:
+    creds = auth.load_creds()
+    web_user = creds[0] if creds else "-"
+    now = time.time()
+    window = auth._WINDOW_SECONDS
+    max_fails = auth._MAX_FAILS
+    locked_ips = 0
+    recent_failures = 0
+    for ts in auth._FAILURES.values():
+        recent = [t for t in ts if now - t < window]
+        recent_failures += len(recent)
+        if len(recent) >= max_fails:
+            locked_ips += 1
+    cred_reset = "-"
+    if os.path.exists(WEB_ENV):
+        try:
+            cred_reset = time.strftime(
+                "%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(WEB_ENV))
+            )
+        except Exception:
+            cred_reset = "-"
+    return {
+        "bind_addr": BIND_ADDR,
+        "bind_port": BIND_PORT,
+        "public_on": BIND_ADDR in ("0.0.0.0", "::"),
+        "web_user": web_user,
+        "lock_threshold": max_fails,
+        "lock_window_min": window // 60,
+        "locked_ips": locked_ips,
+        "recent_failures": recent_failures,
+        "cred_reset": cred_reset,
+    }
+
+
+def common(active_page: str) -> dict:
+    """每个受保护页面都需要的基础上下文（base.html 依赖）。"""
+    return {
+        "version": APP_VERSION,
+        "services": service_list(),
+        "bind_addr": BIND_ADDR,
+        "bind_port": BIND_PORT,
+        "active_page": active_page,
+    }
+
+
+def require_login(request: Request):
+    if not auth.check_auth(request):
+        return RedirectResponse("/login", status_code=303)
+    return None
+
+
 # ------------------------- 认证路由 -------------------------
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -100,7 +212,13 @@ async def login_page(request: Request):
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"error": None, "no_creds": not auth.creds_exist(), "version": APP_VERSION},
+        {
+            "error": None,
+            "no_creds": not auth.creds_exist(),
+            "version": APP_VERSION,
+            "bind_port": BIND_PORT,
+            "lock_window_min": auth._WINDOW_SECONDS // 60,
+        },
     )
 
 
@@ -116,6 +234,8 @@ async def login_submit(request: Request, username: str = Form(...), password: st
                 "error": "失败次数过多，IP 已被临时锁定，请约 15 分钟后再试。",
                 "no_creds": not auth.creds_exist(),
                 "version": APP_VERSION,
+                "bind_port": BIND_PORT,
+                "lock_window_min": auth._WINDOW_SECONDS // 60,
             },
             status_code=429,
         )
@@ -133,7 +253,13 @@ async def login_submit(request: Request, username: str = Form(...), password: st
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"error": error, "no_creds": not auth.creds_exist(), "version": APP_VERSION},
+        {
+            "error": error,
+            "no_creds": not auth.creds_exist(),
+            "version": APP_VERSION,
+            "bind_port": BIND_PORT,
+            "lock_window_min": auth._WINDOW_SECONDS // 60,
+        },
         status_code=401,
     )
 
@@ -151,41 +277,67 @@ async def logout(request: Request):
 # ------------------------- 受保护路由 -------------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    if not auth.check_auth(request):
-        return RedirectResponse("/login", status_code=303)
-    node = get_node()
-    clash = subscription_url(node)
-    sent, recv = net_stats()
-    services = [
-        {"key": key, "label": label, "state": service_status(key)}
-        for key, label in SERVICES
-    ]
-    return templates.TemplateResponse(
-        request,
-        "index.html",
-        {
-            "version": APP_VERSION,
-            "services": services,
-            "server": node.get("SERVER", "-"),
-            "port": node.get("PORT", "-"),
-            "sni": node.get("SNI", "-"),
-            "node_name": node.get("NODE_NAME", "-"),
-            "uuid": node.get("UUID", "-"),
-            "clash": clash,
-            "sub_ready": bool(clash),
-            "qr": qrgen.data_uri(clash) if clash else None,
-            "cpu": psutil.cpu_percent(),
-            "memory": psutil.virtual_memory().percent,
-            "net_recv": human(recv),
-            "net_sent": human(sent),
-        },
-    )
+    redir = require_login(request)
+    if redir:
+        return redir
+    ctx = common("overview")
+    ctx.update(dashboard_context())
+    return templates.TemplateResponse(request, "overview.html", ctx)
+
+
+@app.get("/nodes", response_class=HTMLResponse)
+async def nodes(request: Request):
+    redir = require_login(request)
+    if redir:
+        return redir
+    ctx = common("nodes")
+    ctx.update(dashboard_context())
+    return templates.TemplateResponse(request, "nodes.html", ctx)
+
+
+@app.get("/subs", response_class=HTMLResponse)
+async def subs(request: Request):
+    redir = require_login(request)
+    if redir:
+        return redir
+    ctx = common("subs")
+    ctx.update(dashboard_context())
+    return templates.TemplateResponse(request, "subs.html", ctx)
+
+
+@app.get("/services", response_class=HTMLResponse)
+async def services(request: Request):
+    redir = require_login(request)
+    if redir:
+        return redir
+    return templates.TemplateResponse(request, "services.html", common("services"))
+
+
+@app.get("/security", response_class=HTMLResponse)
+async def security(request: Request):
+    redir = require_login(request)
+    if redir:
+        return redir
+    ctx = common("security")
+    ctx.update(security_context())
+    return templates.TemplateResponse(request, "security.html", ctx)
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings(request: Request):
+    redir = require_login(request)
+    if redir:
+        return redir
+    ctx = common("settings")
+    ctx.update({"node_name": get_node().get("NODE_NAME", "-")})
+    return templates.TemplateResponse(request, "settings.html", ctx)
 
 
 @app.post("/restart/{svc}")
 async def restart_service(svc: str, request: Request):
-    if not auth.check_auth(request):
-        return RedirectResponse("/login", status_code=303)
+    redir = require_login(request)
+    if redir:
+        return redir
     # 重启改为 POST（配合 samesite=lax cookie 防跨站触发），并完整处理失败情况
     safe = html.escape(svc)
     try:
@@ -207,24 +359,16 @@ async def restart_service(svc: str, request: Request):
 
 @app.get("/logs/{svc}", response_class=HTMLResponse)
 async def logs(svc: str, request: Request):
-    if not auth.check_auth(request):
-        return RedirectResponse("/login", status_code=303)
+    redir = require_login(request)
+    if redir:
+        return redir
+    label = dict(SERVICES).get(svc, svc)
     try:
         text = service.log(svc)
     except ValueError as e:
         text = str(e)
-    # journalctl 输出可能包含攻击者可控内容（如请求路径写入日志），必须转义防 XSS
-    safe_svc = html.escape(svc)
-    safe_text = html.escape(text)
-    return f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>日志 - {safe_svc}</title>
-<link rel="stylesheet" href="/static/style.css"></head>
-<body><main class="wrap"><div class="card log-card">
-<h2>日志：{safe_svc}</h2>
-<pre class="log">{safe_text}</pre>
-<div class="log-actions">
-<form method="post" action="/restart/{safe_svc}" onsubmit="return confirm('确认重启 {safe_svc} 吗？')"><button class="btn" type="submit">重启 {safe_svc}</button></form>
-<a class="btn ghost" href="/">返回面板</a>
-</div>
-</div></main></body></html>"""
+    # svc 已通过 service._guard 白名单校验（仅 xray/nginx/proxy-web），故可直接用于 JS；
+    # 日志正文交由 Jinja2 自动转义，避免日志注入 XSS。
+    ctx = common("services")
+    ctx.update({"svc": svc, "svc_label": label, "text": text})
+    return templates.TemplateResponse(request, "logs.html", ctx)

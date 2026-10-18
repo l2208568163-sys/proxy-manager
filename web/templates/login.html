@@ -7,26 +7,55 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="login-body">
-<div class="login-wrap">
-  <div class="login-card">
-    <div class="login-logo">⚡</div>
-    <h1>Proxy Manager</h1>
-    <p class="login-sub">服务器管理控制台 · v{{ version }}</p>
-    {% if no_creds %}
-      <p class="err">未检测到 data/web.env，登录已被拒绝。<br>请在服务器运行 <code>modules/panel.sh reset</code> 生成随机口令。</p>
-    {% elif error %}
-      <p class="err">{{ error }}</p>
-    {% endif %}
-    <form method="post" action="/login">
-      <label>用户名
-        <input name="username" autocomplete="username" required>
-      </label>
-      <label>密码
-        <input name="password" type="password" autocomplete="current-password" required>
-      </label>
-      <button class="btn primary full" type="submit">登 录</button>
-    </form>
+  <div class="login-brand">
+    <div class="lb-top">
+      <svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2 28 9v14L16 30 4 23V9L16 2Z" stroke="#3B9EFF" stroke-width="1.6" fill="rgba(59,158,255,.12)"/>
+        <path d="M10 16a6 6 0 0 1 6-6" stroke="#22D3EE" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="2.4" fill="#3B9EFF"/>
+      </svg>
+      <span class="lb-title">Proxy Manager</span>
+    </div>
+    <div class="lb-tag">
+      <h1>掌控你的 <span class="hl">节点、订阅与服务</span><br>于一方控制台</h1>
+      <p>面向 Ubuntu Server 的代理节点运维面板。Xray Reality、Clash 订阅与系统状态，集中可视、一键操作。</p>
+      <ul class="lb-feats">
+        <li><span class="ic">✓</span><span>实时服务健康与资源监控，异常即时可见</span></li>
+        <li><span class="ic">✓</span><span>随机令牌订阅地址，扫码即导入，凭证不泄露</span></li>
+        <li><span class="ic">✓</span><span>登录限速、本机监听、公网开关，安全默认收紧</span></li>
+      </ul>
+    </div>
+    <div class="lb-foot">
+      <span>v{{ version }}</span><span>MIT License</span><span>默认仅监听 127.0.0.1:{{ bind_port }}</span>
+    </div>
   </div>
-</div>
+
+  <div class="login-form">
+    <div class="form-card">
+      <h2>登录到控制台</h2>
+      <p class="sub">使用服务器生成的 Web 面板凭据登录</p>
+      {% if no_creds %}
+        <p class="err show">未检测到 data/web.env，登录已被拒绝。<br>请在服务器运行 <code>modules/panel.sh reset</code> 生成随机口令。</p>
+      {% elif error %}
+        <p class="err show">{{ error }}</p>
+      {% endif %}
+      <form method="post" action="/login">
+        <div class="field">
+          <label>用户名</label>
+          <input name="username" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="form-row">
+          <label><input type="checkbox" checked> 记住此设备</label>
+          <a href="#" onclick="return false">忘记密码？</a>
+        </div>
+        <button class="btn primary block" type="submit">登录</button>
+      </form>
+      <p class="login-note">凭据存储于服务器 <span class="mono">data/web.env</span><br>连续失败将触发 IP 临时锁定（约 {{ lock_window_min }} 分钟）</p>
+    </div>
+  </div>
 </body>
 </html>

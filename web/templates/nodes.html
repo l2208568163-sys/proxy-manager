@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}节点 · Proxy Manager 控制台{% endblock %}
+{% block page_title %}节点{% endblock %}
+{% block page_sub %}管理 Xray Reality 节点与接入信息{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <div><h1>节点</h1><p>管理 Xray Reality 节点与接入信息</p></div>
+    <div class="head-actions"><button class="btn primary sm" onclick="toast('v3.4 多节点管理中')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> 新建节点</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px">
+    <div class="eyebrow">主节点 · Reality</div>
+    <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:280px">
+        <div class="kv"><span class="k">节点名称</span><span class="v">{{ node_name }}</span></div>
+        <div class="kv"><span class="k">协议栈</span><span class="v mono">VLESS + Reality + Vision · TCP</span></div>
+        <div class="kv"><span class="k">入站地址</span><span class="v mono">{{ server }}:{{ port }}</span></div>
+        <div class="kv"><span class="k">SNI / 目标</span><span class="v mono">{{ sni }}</span></div>
+        <div class="kv"><span class="k">Short ID</span><span class="v mono">{{ node.get('SHORT_ID','-') }}</span></div>
+        <div class="kv"><span class="k">创建时间</span><span class="v">{{ node.get('CREATED','-') }}</span></div>
+      </div>
+      <div style="flex:1;min-width:280px">
+        <div class="kv"><span class="k">运行状态</span><span class="v">{% if online_rate==100 %}<span class="pill ok"><span class="dot pulse"></span>运行中</span>{% else %}<span class="pill bad"><span class="dot"></span>未运行</span>{% endif %}</span></div>
+        <div class="kv"><span class="k">UUID</span><span class="v mono copyable">{{ uuid }}<button class="copy-btn" onclick="copyText('uuidTxt')">复制</button></span></div>
+        <span id="uuidTxt" style="display:none">{{ uuid }}</span>
+        <div class="kv"><span class="k">Public Key</span><span class="v mono copyable">{{ node.get('PUBLIC_KEY','-') }}<button class="copy-btn" onclick="copyText('pkTxt')">复制</button></span></div>
+        <span id="pkTxt" style="display:none">{{ node.get('PUBLIC_KEY','-') }}</span>
+        <div class="kv"><span class="k">网络累计</span><span class="v tnum">{{ net_total }} GB</span></div>
+      </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn secondary sm" onclick="copyText('vlessUri')">复制 VLESS 链接</button>
+      <button class="btn ghost sm" onclick="openRestart('Xray','xray')">重启 Xray</button>
+      <span id="vlessUri" style="display:none">{{ node.get('VLESS_URI','-') }}</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">全部节点</div>
+    <table class="tbl">
+      <thead><tr><th>名称</th><th>地址</th><th>协议</th><th>状态</th><th>流量</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>{{ node_name }}</b></td>
+          <td class="mono">{{ server }}:{{ port }}</td>
+          <td class="mono">VLESS+R</td>
+          {% if online_rate==100 %}<td><span class="pill ok"><span class="dot pulse"></span>运行中</span></td>{% else %}<td><span class="pill bad"><span class="dot"></span>未运行</span></td>{% endif %}
+          <td class="tnum">{{ net_total }} GB</td>
+        </tr>
+        <tr><td colspan="5"><div class="empty"><div class="ei">◍</div><div class="et">暂无其他节点</div><div class="es">v3.4 将支持多节点管理与流量统计</div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

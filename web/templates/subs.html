@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}订阅 · Proxy Manager 控制台{% endblock %}
+{% block page_title %}订阅{% endblock %}
+{% block page_sub %}Clash 订阅地址、令牌与导入客户端管理{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <div><h1>订阅</h1><p>Clash 订阅地址、令牌与导入客户端管理</p></div>
+    <div class="head-actions"><button class="btn danger sm" onclick="toast('请在服务器主菜单 2 重新生成订阅以轮换令牌')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg> 轮换令牌</button></div>
+  </div>
+
+  <div class="grid cols-2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="eyebrow">当前订阅</div>
+      {% if sub_ready %}
+      <div class="kv"><span class="k">订阅地址</span><span class="v mono copyable" style="max-width:62%">{{ clash }}<button class="copy-btn" onclick="copyText('subUrl')">复制</button></span></div>
+      <div class="kv"><span class="k">令牌状态</span><span class="v"><span class="pill ok">有效</span></span></div>
+      <div class="sub-box" style="margin-top:14px">
+        <div class="sub-url"><code id="subUrl">{{ clash }}</code>
+          <div class="acts"><button class="btn primary sm" onclick="copyText('subUrl')">复制完整地址</button></div></div>
+        <div style="text-align:center">
+          {% if qr %}<img class="qr" src="{{ qr }}" alt="订阅二维码">{% else %}<div class="qr ph">二维码<br>生成中</div>{% endif %}
+          <p class="tertiary" style="font-size:11.5px;margin-top:8px">手机扫码导入</p>
+        </div>
+      </div>
+      <p class="tertiary" style="font-size:11.5px;margin-top:12px">⚠ 地址含随机令牌，等同节点凭证，请勿公开分享。</p>
+      {% else %}
+      <p class="tertiary">订阅尚未生成或缺少随机令牌。请在服务器运行 <code>proxy</code> → 主菜单 2 重新生成订阅。</p>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="eyebrow">安全提示</div>
+      <div class="rec" style="margin-bottom:12px"><div class="ric">⚿</div><div><h4>轮换即换密</h4><p>轮换令牌会使旧订阅地址立即失效，所有客户端需重新导入。建议定期轮换（如每月）。</p></div></div>
+      <div class="rec"><div class="ric">⚠</div><div><h4>泄露处理</h4><p>怀疑令牌泄露时，立即在服务器主菜单 2 重新生成订阅。旧地址无法再拉取配置。</p></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">导入客户端</div>
+    <div class="empty"><div class="ei">📡</div><div class="et">暂无客户端连接记录</div><div class="es">v3.4 将接入客户端列表与在线状态</div></div>
+  </div>
+{% endblock %}
