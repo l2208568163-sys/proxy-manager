@@ -18,13 +18,17 @@ import time
 
 import psutil
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import auth
 import qrgen
 import service
+import perf
+
+# 启动后台性能采集线程（CPU/内存/磁盘/网络/负载快照 + 历史趋势）
+perf.start()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NODE_FILE = os.path.join(BASE_DIR, "data", "node.env")
@@ -123,20 +127,21 @@ def subscription_url(node: dict):
     return None
 
 
-def net_stats():
-    try:
-        c = psutil.net_io_counters()
-        return c.bytes_sent, c.bytes_recv
-    except Exception:
-        return 0, 0
-
-
 def human(n: float) -> str:
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if n < 1024:
             return f"{n:.1f} {unit}"
         n /= 1024
     return f"{n:.1f} PB"
+
+
+def fmt_uptime(seconds: float) -> str:
+    """运行时长人性化显示（性能监视模块用）。"""
+    s = int(seconds or 0)
+    d, s = divmod(s, 86400)
+    h, s = divmod(s, 3600)
+    m = s // 60
+    return (f"{d}天 " if d else "") + f"{h}小时{m}分"
 
 
 def login_stats() -> dict:
@@ -162,8 +167,10 @@ def login_stats() -> dict:
 def dashboard_context() -> dict:
     node = get_node()
     clash = subscription_url(node)
-    sent, recv = net_stats()
-    xray_active = service_status("xray") == "active"
+    # 性能数据全部来自后台采集线程的真实快照
+    # （修复原 psutil.cpu_percent() 无 interval 导致 CPU% 恒≈0 的采样缺陷）
+    snap = perf.snapshot()
+    xray_active = snap.get("online", 0) == 1
     stats = login_stats()
     # 概览「最近活动」时间线：用真实可推导的状态拼装，不做假时间戳
     activity = []
@@ -181,6 +188,7 @@ def dashboard_context() -> dict:
         activity.append({"title": f"近 {stats['lock_window_min']} 分钟 {stats['recent_failures']} 次登录失败", "time": "当前", "kind": "warn"})
     else:
         activity.append({"title": "登录防护正常，无异常", "time": "当前", "kind": "ok"})
+    net_total = round(snap.get("net_in_total_gb", 0) + snap.get("net_out_total_gb", 0), 1)
     return {
         "node": node,
         "node_name": node.get("NODE_NAME", "-"),
@@ -194,11 +202,30 @@ def dashboard_context() -> dict:
         "qr": qrgen.data_uri(clash) if clash else None,
         # 节点在线率：核心代理服务 Xray 在运行即视为主节点在线
         "online_rate": 100 if xray_active else 0,
-        "cpu": psutil.cpu_percent(),
-        "memory": psutil.virtual_memory().percent,
-        "net_recv": human(recv),
-        "net_sent": human(sent),
-        "net_total": round((sent + recv) / (1024 ** 3), 1),
+        # ---- 性能监视（后台线程真实采样）----
+        "cpu": snap.get("cpu", 0.0),
+        "memory": snap.get("mem", 0.0),
+        "mem_used_gb": snap.get("mem_used_gb", 0.0),
+        "mem_total_gb": snap.get("mem_total_gb", 0.0),
+        "swap": snap.get("swap", 0.0),
+        "disk": snap.get("disk", 0.0),
+        "disk_used_gb": snap.get("disk_used_gb", 0.0),
+        "disk_total_gb": snap.get("disk_total_gb", 0.0),
+        "load1": snap.get("load1", 0.0),
+        "load5": snap.get("load5", 0.0),
+        "load15": snap.get("load15", 0.0),
+        "uptime_h": fmt_uptime(snap.get("uptime", 0)),
+        "net_recv": human(snap.get("net_in_total_gb", 0) * 1024 ** 3),
+        "net_sent": human(snap.get("net_out_total_gb", 0) * 1024 ** 3),
+        "net_total": net_total,
+        "net_in_rate_h": human(snap.get("net_in_rate", 0)) + "/s",
+        "net_out_rate_h": human(snap.get("net_out_rate", 0)) + "/s",
+        # ---- sparkline 真实走势（后台历史队列驱动，替换原硬编码演示折线）----
+        "cpu_spark": perf.spark("cpu", lo=0, hi=100),
+        "mem_spark": perf.spark("mem", lo=0, hi=100),
+        "disk_spark": perf.spark("disk", lo=0, hi=100),
+        "net_spark": perf.spark("net"),
+        "online_spark": perf.spark("online", lo=0, hi=1),
         "lock_window_min": stats["lock_window_min"],
         "locked_ips": stats["locked_ips"],
         "recent_failures": stats["recent_failures"],
@@ -233,12 +260,18 @@ def security_context() -> dict:
 
 def common(active_page: str) -> dict:
     """每个受保护页面都需要的基础上下文（base.html 依赖）。"""
+    stats = login_stats()
+    # 顶栏铃铛真实告警数：被锁定 IP 数 +（有失败记录但尚无锁定时计 1），替换原硬编码演示值
+    alert_count = stats["locked_ips"] + (
+        1 if stats["recent_failures"] and not stats["locked_ips"] else 0
+    )
     return {
         "version": APP_VERSION,
         "services": service_list(),
         "bind_addr": BIND_ADDR,
         "bind_port": BIND_PORT,
         "active_page": active_page,
+        "alert_count": alert_count,
     }
 
 
@@ -422,3 +455,39 @@ async def logs(svc: str, request: Request):
     ctx = common("services")
     ctx.update({"svc": svc, "svc_label": label, "text": text})
     return templates.TemplateResponse(request, "logs.html", ctx)
+
+
+@app.get("/api/metrics")
+async def api_metrics(request: Request):
+    """实时性能指标 JSON（性能监视模块数据源，前端每 3s 轮询刷新）。
+
+    需登录；未登录返回 401 JSON 而非 303 跳转，避免 fetch 跟随重定向拿到 HTML。
+    """
+    redir = require_login(request)
+    if redir:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    snap = perf.snapshot()
+    return {
+        "cpu": snap.get("cpu", 0.0),
+        "mem": snap.get("mem", 0.0),
+        "disk": snap.get("disk", 0.0),
+        "mem_used_gb": snap.get("mem_used_gb", 0.0),
+        "mem_total_gb": snap.get("mem_total_gb", 0.0),
+        "disk_used_gb": snap.get("disk_used_gb", 0.0),
+        "disk_total_gb": snap.get("disk_total_gb", 0.0),
+        "net_in_rate": snap.get("net_in_rate", 0.0),
+        "net_out_rate": snap.get("net_out_rate", 0.0),
+        "net_in_total_gb": snap.get("net_in_total_gb", 0.0),
+        "net_out_total_gb": snap.get("net_out_total_gb", 0.0),
+        "load1": snap.get("load1", 0.0),
+        "load5": snap.get("load5", 0.0),
+        "load15": snap.get("load15", 0.0),
+        "uptime": snap.get("uptime", 0.0),
+        "online": snap.get("online", 0),
+        # sparkline 直接返回服务端算好的 points，前端只管贴上去
+        "cpu_spark": perf.spark("cpu", lo=0, hi=100),
+        "mem_spark": perf.spark("mem", lo=0, hi=100),
+        "disk_spark": perf.spark("disk", lo=0, hi=100),
+        "net_spark": perf.spark("net"),
+        "online_spark": perf.spark("online", lo=0, hi=1),
+    }

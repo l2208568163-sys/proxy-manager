@@ -4,31 +4,31 @@
 {% block page_sub %}实时掌握节点、订阅与服务运行状态{% endblock %}
 
 {% block content %}
-  <!-- 指标卡（真实数据 + 迷你走势，与参考原型一致） -->
+  <!-- 指标卡（真实采样数据 + 后台历史驱动的迷你走势，每 3s 自动刷新） -->
   <div class="grid cols-4" style="margin-bottom:18px">
     <div class="card stat hoverable">
       <div class="lab">节点在线率</div>
-      <div class="val tnum">{{ online_rate }}<span class="u">%</span></div>
+      <div class="val tnum"><span id="onlineVal">{{ online_rate }}</span><span class="u">%</span></div>
       <div class="delta {% if online_rate==100 %}up{% else %}down{% endif %}">{% if online_rate==100 %}▲ 服务正常{% else %}▼ 检查 Xray{% endif %}</div>
-      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#34D399" stroke-width="2" points="0,26 15,22 30,24 45,18 60,20 75,14 90,12"/></svg>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline id="onlineSparkSvg" fill="none" stroke="#34D399" stroke-width="2" points="{{ online_spark }}"/></svg>
     </div>
     <div class="card stat hoverable">
       <div class="lab">CPU 使用率</div>
-      <div class="val tnum">{{ cpu|round(1) }}<span class="u">%</span></div>
-      <div class="delta flat">实时采样</div>
-      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#3B9EFF" stroke-width="2" points="0,28 15,24 30,25 45,16 60,18 75,10 90,8"/></svg>
+      <div class="val tnum"><span id="cpuVal">{{ cpu|round(1) }}</span><span class="u">%</span></div>
+      <div class="delta flat">实时 · 3s 刷新</div>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline id="cpuSparkSvg" fill="none" stroke="#3B9EFF" stroke-width="2" points="{{ cpu_spark }}"/></svg>
     </div>
     <div class="card stat hoverable">
       <div class="lab">内存使用率</div>
-      <div class="val tnum">{{ memory|round(1) }}<span class="u">%</span></div>
-      <div class="delta flat">实时采样</div>
-      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#22D3EE" stroke-width="2" points="0,24 15,22 30,20 45,21 60,16 75,17 90,13"/></svg>
+      <div class="val tnum"><span id="memVal">{{ memory|round(1) }}</span><span class="u">%</span></div>
+      <div class="delta flat" id="memDetail">{{ mem_used_gb|round(1) }} / {{ mem_total_gb|round(1) }} GB</div>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline id="memSparkSvg" fill="none" stroke="#22D3EE" stroke-width="2" points="{{ mem_spark }}"/></svg>
     </div>
     <div class="card stat hoverable">
       <div class="lab">网络累计</div>
-      <div class="val tnum">{{ net_total }}<span class="u">GB</span></div>
-      <div class="delta flat">↓{{ net_recv }} / ↑{{ net_sent }}</div>
-      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline fill="none" stroke="#FBBF24" stroke-width="2" points="0,12 15,16 30,14 45,20 60,18 75,24 90,22"/></svg>
+      <div class="val tnum"><span id="netTotalVal">{{ net_total }}</span><span class="u">GB</span></div>
+      <div class="delta flat">↓<span id="netRecvTxt">{{ net_recv }}</span> / ↑<span id="netSentTxt">{{ net_sent }}</span></div>
+      <svg class="spark" width="90" height="34" viewBox="0 0 90 34"><polyline id="netSparkSvg" fill="none" stroke="#FBBF24" stroke-width="2" points="{{ net_spark }}"/></svg>
     </div>
   </div>
 
@@ -55,19 +55,27 @@
     </div>
 
     <div class="card">
-      <div class="eyebrow">资源监控</div>
+      <div class="eyebrow">资源监控 <span class="muted" style="font-size:11px;font-weight:400">· 每 3 秒自动刷新</span></div>
       <div class="gauge">
-        <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="#3B9EFF" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="{{ (169.6*(100-cpu)/100)|round(1) }}"/></svg><span class="pct tnum">{{ cpu|round(0) }}%</span></div>
-        <div class="gl"><div class="gt"><span class="muted">CPU</span><b class="tnum">{{ cpu|round(1) }}%</b></div><div class="track"><i style="width:{{ cpu }}%"></i></div></div>
+        <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/><circle id="cpuRing" cx="32" cy="32" r="27" fill="none" stroke="#3B9EFF" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="{{ (169.6*(100-cpu)/100)|round(1) }}"/></svg><span class="pct tnum" id="cpuRingTxt">{{ cpu|round(0) }}%</span></div>
+        <div class="gl"><div class="gt"><span class="muted">CPU</span><b class="tnum" id="cpuGaugeVal">{{ cpu|round(1) }}%</b></div><div class="track"><i id="cpuBar" style="width:{{ cpu }}%"></i></div></div>
       </div>
       <div class="gauge">
-        <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="#22D3EE" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="{{ (169.6*(100-memory)/100)|round(1) }}"/></svg><span class="pct tnum">{{ memory|round(0) }}%</span></div>
-        <div class="gl"><div class="gt"><span class="muted">内存</span><b class="tnum">{{ memory|round(1) }}%</b></div><div class="track"><i style="width:{{ memory }}%"></i></div></div>
+        <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/><circle id="memRing" cx="32" cy="32" r="27" fill="none" stroke="#22D3EE" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="{{ (169.6*(100-memory)/100)|round(1) }}"/></svg><span class="pct tnum" id="memRingTxt">{{ memory|round(0) }}%</span></div>
+        <div class="gl"><div class="gt"><span class="muted">内存</span><b class="tnum" id="memGaugeVal">{{ memory|round(1) }}%</b></div><div class="track"><i id="memBar" style="width:{{ memory }}%"></i></div></div>
+      </div>
+      <div class="gauge">
+        <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/><circle id="diskRing" cx="32" cy="32" r="27" fill="none" stroke="#A78BFA" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="{{ (169.6*(100-disk)/100)|round(1) }}"/></svg><span class="pct tnum" id="diskRingTxt">{{ disk|round(0) }}%</span></div>
+        <div class="gl"><div class="gt"><span class="muted">磁盘 /</span><b class="tnum" id="diskUsedTxt">{{ disk_used_gb|round(1) }} / {{ disk_total_gb|round(1) }} GB</b></div><div class="track"><i id="diskBar" style="width:{{ disk }}%"></i></div></div>
       </div>
       <div class="net-flow">
-        <div><div class="l">↓ 接收</div><div class="n tnum">{{ net_recv }}</div></div>
-        <div><div class="l">↑ 发送</div><div class="n tnum">{{ net_sent }}</div></div>
+        <div><div class="l">↓ 接收速率</div><div class="n tnum" id="netInTxt">{{ net_in_rate_h }}</div></div>
+        <div><div class="l">↑ 发送速率</div><div class="n tnum" id="netOutTxt">{{ net_out_rate_h }}</div></div>
       </div>
+      <div class="kv" style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
+        <span class="k">负载 (1/5/15min)</span><span class="v tnum" id="loadTxt">{{ load1 }} / {{ load5 }} / {{ load15 }}</span>
+      </div>
+      <div class="kv"><span class="k">运行时长</span><span class="v tnum" id="uptimeTxt">{{ uptime_h }}</span></div>
     </div>
   </div>
 
@@ -112,4 +120,37 @@
     <p class="hint tertiary">订阅尚未生成或缺少随机令牌。请在服务器运行 <code>proxy</code> → 主菜单 2 重新生成订阅。</p>
     {% endif %}
   </div>
+{% endblock %}
+
+{% block script %}
+<script>
+/* 性能监视模块：每 3s 轮询 /api/metrics，把真实采样刷到环形仪表、进度条与 sparkline */
+function fmtBytes(b){b=b||0;var u=['B','KB','MB','GB','TB'],i=0;while(b>=1024&&i<u.length-1){b/=1024;i++;}return b.toFixed(i===0?0:1)+' '+u[i];}
+function fmtUp(s){s=Math.floor(s||0);var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d>0?d+'天 ':'')+h+'小时'+m+'分';}
+function T(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
+function S(id,p){var el=document.getElementById(id);if(el&&p)el.setAttribute('points',p);}
+function R(id,val){var el=document.getElementById(id);if(el)el.setAttribute('stroke-dashoffset',(169.6*(100-Math.min(100,val))/100).toFixed(1));}
+function B(id,val){var el=document.getElementById(id);if(el)el.style.width=Math.min(100,val)+'%';}
+function RT(id,val){T(id,Math.round(val)+'%');}
+function applyMetrics(m){
+  T('cpuVal',m.cpu.toFixed(1));RT('cpuRingTxt',m.cpu);R('cpuRing',m.cpu);B('cpuBar',m.cpu);T('cpuGaugeVal',m.cpu.toFixed(1)+'%');S('cpuSparkSvg',m.cpu_spark);
+  T('memVal',m.mem.toFixed(1));RT('memRingTxt',m.mem);R('memRing',m.mem);B('memBar',m.mem);T('memGaugeVal',m.mem.toFixed(1)+'%');
+  T('memDetail',m.mem_used_gb.toFixed(1)+' / '+m.mem_total_gb.toFixed(1)+' GB');S('memSparkSvg',m.mem_spark);
+  RT('diskRingTxt',m.disk);R('diskRing',m.disk);B('diskBar',m.disk);
+  T('diskUsedTxt',m.disk_used_gb.toFixed(1)+' / '+m.disk_total_gb.toFixed(1)+' GB');S('diskSparkSvg',m.disk_spark);
+  T('netInTxt',fmtBytes(m.net_in_rate)+'/s');T('netOutTxt',fmtBytes(m.net_out_rate)+'/s');S('netSparkSvg',m.net_spark);
+  T('netTotalVal',(m.net_in_total_gb+m.net_out_total_gb).toFixed(1));
+  T('netRecvTxt',fmtBytes(m.net_in_total_gb*1073741824));T('netSentTxt',fmtBytes(m.net_out_total_gb*1073741824));
+  T('loadTxt',m.load1.toFixed(2)+' / '+m.load5.toFixed(2)+' / '+m.load15.toFixed(2));
+  T('uptimeTxt',fmtUp(m.uptime));
+  T('onlineVal',m.online?100:0);
+}
+function pollMetrics(){
+  fetch('/api/metrics',{credentials:'same-origin'})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(m){if(m&&!m.error)applyMetrics(m);})
+    .catch(function(){});
+}
+document.addEventListener('DOMContentLoaded',function(){pollMetrics();setInterval(pollMetrics,3000);});
+</script>
 {% endblock %}
