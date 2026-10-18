@@ -22,7 +22,7 @@ info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
-command -v clear >/dev/null 2>&1 && clear
+command -v clear >/dev/null 2>&1 && { clear 2>/dev/null || true; }
 echo "
 ========================================
 

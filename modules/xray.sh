@@ -45,7 +45,7 @@ EOF
 }
 require_root
 while true; do
-  clear; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "0. 返回"
+  clr; say "===== Xray Reality 节点 ====="; say "1. 安装或重新配置"; say "2. 查看节点"; say "3. 重启"; say "4. 状态"; say "5. 移除 Xray"; say "0. 返回"
   read -r -p "请选择: " c
   case "$c" in
     1) install_xray; read -r -p "请按回车继续..." _;;

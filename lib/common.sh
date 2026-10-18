@@ -10,6 +10,9 @@ MIHOMO_CONFIG="$MIHOMO_DIR/config.yaml"
 
 say() { printf '%s\n' "$*"; }
 die() { say "错误: $*" >&2; exit 1; }
+# clear 在 TERM 未设置（sudo env_reset / cron / ssh 非交互）或 TERM=dumb 时返回非零，
+# 配合 set -e 会让菜单在打印任何内容前就退出 —— 用户看到的现象是"一片空白直接回到 shell"。
+clr() { clear 2>/dev/null || true; }
 require_root() { [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "请使用 root 权限运行。"; }
 require_command() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 service_is_active() { systemctl is-active --quiet "$1" 2>/dev/null; }
@@ -26,13 +29,21 @@ restart_if_active() {
 }
 confirm() { local a; read -r -p "$1 [y/N]: " a; [[ "$a" =~ ^[Yy]([Ee][Ss])?$ ]]; }
 
+# 读取节点数据。失败时用 return 1 而不是 die：
+# die 是显式 exit，连 `if load_node_data; then` 都拦不住，会把整个菜单带走。
 load_node_data() {
-  [[ -f "$NODE_FILE" ]] || die "未找到节点信息，请先安装 Xray Reality。"
+  if [[ ! -f "$NODE_FILE" ]]; then
+    say "错误: 未找到节点信息，请先安装 Xray Reality。" >&2
+    return 1
+  fi
   # shellcheck disable=SC1090
   source "$NODE_FILE"
   local key
   for key in SERVER UUID PUBLIC_KEY SHORT_ID PORT SNI; do
-    [[ -n "${!key:-}" ]] || die "节点数据不完整：$key 缺失。"
+    if [[ -z "${!key:-}" ]]; then
+      say "错误: 节点数据不完整：$key 缺失。" >&2
+      return 1
+    fi
   done
 }
 

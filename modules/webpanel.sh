@@ -164,7 +164,7 @@ esac
 
 require_root
 while true; do
-  clear; say "===== Web 管理中心 ====="
+  clr; say "===== Web 管理中心 ====="
   say "1. 安装并启动面板"; say "2. 启动面板"; say "3. 停止面板"; say "4. 查看访问地址"
   say "5. 查看账号密码"; say "6. 重置密码"
   say "7. 公网访问开关（当前: $([[ "$(read_web_bind)" == "0.0.0.0" ]] && echo '公网开放' || echo '仅本机')）"

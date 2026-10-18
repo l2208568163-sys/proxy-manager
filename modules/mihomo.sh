@@ -69,4 +69,4 @@ EOF
   say "TUN 模式已启用。它会修改主机路由表；如需关闭，请恢复原订阅配置。"
 }
 require_root
-while true; do clear; say "===== Mihomo 客户端 ====="; say "1. 安装或更新核心"; say "2. 导入订阅并启动"; say "3. 为已导入配置启用 TUN 模式"; say "4. 重启"; say "5. 状态"; say "0. 返回"; read -r -p "请选择: " c; case "$c" in 1) install_mihomo; read -r -p "请按回车继续..." _;;2) require_command mihomo; import_config; read -r -p "请按回车继续..." _;;3) require_command mihomo; enable_tun; read -r -p "请按回车继续..." _;;4) systemctl restart mihomo;;5) systemctl --no-pager status mihomo || true; read -r -p "请按回车继续..." _;;0) exit;;*) say "无效选择。";;esac; done
+while true; do clr; say "===== Mihomo 客户端 ====="; say "1. 安装或更新核心"; say "2. 导入订阅并启动"; say "3. 为已导入配置启用 TUN 模式"; say "4. 重启"; say "5. 状态"; say "0. 返回"; read -r -p "请选择: " c; case "$c" in 1) install_mihomo; read -r -p "请按回车继续..." _;;2) require_command mihomo; import_config; read -r -p "请按回车继续..." _;;3) require_command mihomo; enable_tun; read -r -p "请按回车继续..." _;;4) systemctl restart mihomo;;5) systemctl --no-pager status mihomo || true; read -r -p "请按回车继续..." _;;0) exit;;*) say "无效选择。";;esac; done
