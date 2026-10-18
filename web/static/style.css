@@ -233,6 +233,7 @@ button{font-family:inherit;cursor:pointer}
 
 /* ---------- 登录页（分屏） ---------- */
 .login-body{display:grid;grid-template-columns:1.1fr 1fr;min-height:100vh;background:var(--bg)}
+#login{position:fixed;inset:0;display:grid;grid-template-columns:1.1fr 1fr;z-index:100;background:var(--bg)}
 .login-brand{position:relative;overflow:hidden;padding:56px;display:flex;flex-direction:column;justify-content:space-between;
   background:radial-gradient(120% 120% at 20% 10%,rgba(59,158,255,.16),transparent 55%),
              radial-gradient(90% 90% at 90% 90%,rgba(52,211,153,.10),transparent 50%),#0B1018;
@@ -305,7 +306,7 @@ button{font-family:inherit;cursor:pointer}
 /* 移动端 */
 #menuToggle{display:none}
 @media(max-width:860px){
-  .login-body{grid-template-columns:1fr}.login-brand{display:none}
+  #login{grid-template-columns:1fr}.login-brand{display:none}
   .shell{grid-template-columns:1fr}.sidebar{position:fixed;left:0;top:0;width:240px;z-index:90;transform:translateX(-100%);transition:.2s}
   .sidebar.open{transform:none}
   #menuToggle{display:grid}

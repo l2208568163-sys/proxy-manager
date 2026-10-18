@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录 · Proxy Manager</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <style>{{ APP_CSS|safe }}</style>
 </head>
-<body class="login-body">
+<body>
+<div id="login">
   <div class="login-brand">
     <div class="lb-top">
       <svg width="34" height="34" viewBox="0 0 32 32" fill="none">
@@ -42,11 +43,11 @@
       <form method="post" action="/login">
         <div class="field">
           <label>用户名</label>
-          <input name="username" autocomplete="username" required>
+          <input name="username" placeholder="admin" autocomplete="username" required>
         </div>
         <div class="field">
           <label>密码</label>
-          <input name="password" type="password" autocomplete="current-password" required>
+          <input name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
         </div>
         <div class="form-row">
           <label><input type="checkbox" checked> 记住此设备</label>
@@ -57,5 +58,6 @@
       <p class="login-note">凭据存储于服务器 <span class="mono">data/web.env</span><br>连续失败将触发 IP 临时锁定（约 {{ lock_window_min }} 分钟）</p>
     </div>
   </div>
+</div>
 </body>
 </html>

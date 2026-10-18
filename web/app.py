@@ -33,6 +33,15 @@ VERSION_FILE = os.path.join(BASE_DIR, "VERSION")
 WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(WEB_DIR, "static")
 TEMPLATES_DIR = os.path.join(WEB_DIR, "templates")
+STYLE_FILE = os.path.join(STATIC_DIR, "style.css")
+
+# 内联样式：与参考原型（单文件、内嵌 <style>）一致，保证「直接打开 HTML」也能正常渲染，
+# 不再依赖 /static/style.css 绝对路径（file:// 或静态预览下会 404 导致页面裸奔）。
+try:
+    with open(STYLE_FILE, encoding="utf-8") as _f:
+        APP_CSS = _f.read()
+except Exception:
+    APP_CSS = ""
 
 # 面板监听端口（modules/panel.sh 里写死 8080）；地址与 panel.sh 同源：优先环境变量
 # BIND_ADDR，否则回退到 web.env 的 WEB_BIND，最终默认仅本机 127.0.0.1。
@@ -66,6 +75,8 @@ app = FastAPI(title="Proxy Manager", docs_url=None, redoc_url=None)
 # 挂载静态资源（此前 /static 未挂载导致样式表 404、页面裸奔渲染）
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+# 让所有模板（base / login / result）都能直接内联同一份设计系统 CSS
+templates.env.globals["APP_CSS"] = APP_CSS
 
 APP_VERSION = "-"
 if os.path.exists(VERSION_FILE):
