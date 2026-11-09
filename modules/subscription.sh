@@ -55,6 +55,10 @@ configure_nginx() {
 generate() {
   load_node_data || return 1
   install -d -m 0755 "$WEB_ROOT"
+  # NODE_NAME 兜底：v3.3.0 重构时把旧版 ${NODE_NAME:-Reality-$SERVER} 的兜底弄丢了。
+  # 脚本开着 set -u，若 node.env 缺 NODE_NAME，下面 heredoc 展开 "$NODE_NAME" 会直接
+  # 以 unbound variable 退出——此时令牌目录已建、config.yaml 没写，订阅 URL 变 404/空文件。
+  local name="${NODE_NAME:-Reality-$SERVER}"
   # 订阅随机令牌：订阅路径不可猜测。固定路径 /clash/config.yaml 会被扫段者直接取走
   # 含 UUID 的节点配置（UUID 即 VLESS 唯一凭证）。
   if [[ -z "${SUB_TOKEN:-}" ]]; then
@@ -92,7 +96,7 @@ dns:
   proxy-server-nameserver:
     - https://1.1.1.1/dns-query
 proxies:
-  - name: "$NODE_NAME"
+  - name: "$name"
     type: vless
     server: "$SERVER"
     port: $PORT
@@ -111,7 +115,7 @@ proxy-groups:
   - name: Proxy
     type: select
     proxies:
-      - "$NODE_NAME"
+      - "$name"
       - DIRECT
 rules:
   - MATCH,Proxy
@@ -119,8 +123,26 @@ EOF
   chmod 0644 "$sub_dir/config.yaml"
   # 迁移：删除旧版固定路径订阅文件，令可猜测地址彻底失效
   rm -f "$WEB_ROOT/config.yaml"
+  # 清理历史令牌目录：node.env 重建（重装 / 换密钥）后 SUB_TOKEN 会变，旧令牌目录仍留在
+  # WEB_ROOT 下 —— 旧订阅 URL 继续返回 HTTP 200，但内容是不再匹配服务端的过期节点参数，
+  # 客户端表现为「订阅能拉取成功、节点却全部超时」。只清理 32 位十六进制命名的令牌目录，
+  # 避免误删用户自己放进去的文件。
+  local stale base
+  for stale in "$WEB_ROOT"/*; do
+    [[ -d "$stale" ]] || continue
+    base="$(basename "$stale")"
+    if [[ "$base" =~ ^[0-9a-f]{32}$ && "$base" != "$SUB_TOKEN" ]]; then
+      rm -rf "$stale"
+      say "已清理过期订阅目录: $base（其旧 URL 不再返回过期节点）"
+    fi
+  done
   # 自检：历史问题为 nginx 未启动导致订阅空/不可用
   [[ -s "$sub_dir/config.yaml" ]] || die "Clash 配置生成失败（文件为空）。"
+  # 自检：内容必须与当前节点参数一致，防止写入旧变量 / 旧模板
+  grep -q "uuid: \"$UUID\"" "$sub_dir/config.yaml" \
+    || die "生成的 Clash 配置 UUID 与节点不一致，请重跑生成。"
+  grep -q "port: $PORT" "$sub_dir/config.yaml" \
+    || die "生成的 Clash 配置端口与节点不一致，请重跑生成。"
   if ! systemctl is-active --quiet nginx 2>/dev/null; then
     say "⚠ 自检: nginx 未运行，订阅 URL 暂时无法访问 —— 生成后发布即可（本菜单选项 1 会自动完成）。"
   elif command -v curl >/dev/null 2>&1; then
