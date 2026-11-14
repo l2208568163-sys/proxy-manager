@@ -88,7 +88,7 @@ proxy
 主菜单（v3.3.0 精简后）：
 ```
 ================================
- 代理管理器 Proxy Manager v3.3.0
+ 代理管理器 Proxy Manager v3.4.0
 ================================
 服务状态 — Xray:运行中 | Web面板:运行中 | Nginx:运行中
  1. Xray Reality 节点
@@ -184,6 +184,7 @@ Proxy-Manager
 - [x] **v3.2.8** 安全加固 + UI 重做：订阅随机令牌路径 / 移除默认口令兜底（web.env 缺失拒绝登录）/ 面板默认仅本机监听（公网需显式开启）/ 服务重启改 POST+确认 / 日志输出 HTML 转义 / 面板界面全新深色主题
 - [x] **v3.2.9** 可靠性：`proxy update` 自动刷新面板依赖与 systemd 单元并重启 / install.sh 无条件刷新软件源索引 / mihomo 下载显式选版（标准构建优先、compatible 兜底）+ gzip 完整性校验 + 支持 GITHUB_TOKEN / nginx 独立站点配置（失败回滚、卸载恢复默认站点）/ 登录失败限速（防爆破）
 - [x] **v3.2.10** 回归修复：`update.sh` 的 `BASE_DIR` 多算一级导致 `proxy update` 完全不可用 / `restart_if_active` 对未运行服务返回非零，导致更新流程中途退出 / 主菜单子命令失败不再带走整个程序 / `env_upsert` 改用 awk 重写（修复含 `&`、`|`、`\` 的值被写坏）/ `core.fileMode=false` 修复 chmod 导致工作树永久变脏、`git pull` 永远失败
+- [x] **v3.4.0** **主力链路重构：TCP 443 + 本机伪装站 + Hysteria2 备用**：VLESS+Vision+REALITY 固定监听 TCP 443，dest 指向本机自建 HTTPS 站点（自签证书 + nginx 127.0.0.1:8443），普通扫描流量只能看到一张正常的企业官网；新增 Hysteria2 备用链路（UDP 443 + 端口跳跃 20000-40000，iptables REDIRECT）；Clash 订阅新增 hysteria2 节点与 `GEOIP,CN → DIRECT` 回国直连规则；Web 面板默认不安装（`INSTALL_PANEL=1` 才启用）
 - [x] **v3.3.0** 精简重构：移除 Mihomo 客户端与 DNS/AdGuard 模块（服务端角色错位、53 端口冲突、TUN 曾致 SSH 失联）/ 移除 `server-fix-proxy.sh` 与未引用的 configs 模板 / BBR 并入 install.sh 默认执行、fail2ban 改 `--harden` 显式开关 / nginx 订阅发布并入 `subscription.sh`（生成后自动发布）/ `webpanel.sh` 更名 `panel.sh` / 主菜单 12 项精简为 7 项 / 强制 `.gitattributes` eol=lf
 - [x] **WebUI 重构** 多页控制台：base 应用壳 + 概览/节点/订阅/服务/安全/设置 + 登录/日志/结果页；统一深色设计系统、侧栏导航、SVG 环形仪表、订阅二维码（qrcode 生成，缺依赖时占位）、服务重启 POST+确认、日志内容经 Jinja2 自动转义防 XSS。
 - [ ] **v3.4** 多节点管理 / 流量统计 / API 管理

@@ -111,13 +111,51 @@ proxies:
     reality-opts:
       public-key: "$PUBLIC_KEY"
       short-id: "$SHORT_ID"
+EOF
+  # 备用链路：Hysteria2（UDP + 端口跳跃）。仅在 node.env 记录 HY2=1 时生成。
+  # 自签证书 → skip-cert-verify；ports 为 Mihomo 的端口跳跃字段。
+  if [[ "${HY2:-0}" == "1" && -n "${HY2_PASSWORD:-}" ]]; then
+    cat >>"$sub_dir/config.yaml" <<EOF
+  - name: "HY2-$SERVER"
+    type: hysteria2
+    server: "$SERVER"
+    port: ${HY2_PORT:-443}
+    ports: "${HY2_HOP:-20000-40000}"
+    password: "$HY2_PASSWORD"
+    sni: "${HY2_SNI:-$name}"
+    skip-cert-verify: true
+    up: "100 Mbps"
+    down: "500 Mbps"
+EOF
+  fi
+  cat >>"$sub_dir/config.yaml" <<EOF
 proxy-groups:
   - name: Proxy
     type: select
     proxies:
       - "$name"
+EOF
+  if [[ "${HY2:-0}" == "1" && -n "${HY2_PASSWORD:-}" ]]; then
+    printf '      - "HY2-%s"\n' "$SERVER" >>"$sub_dir/config.yaml"
+  fi
+  cat >>"$sub_dir/config.yaml" <<EOF
       - DIRECT
+  - name: Auto
+    type: url-test
+    url: "http://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 50
+    proxies:
+      - "$name"
+EOF
+  if [[ "${HY2:-0}" == "1" && -n "${HY2_PASSWORD:-}" ]]; then
+    printf '      - "HY2-%s"\n' "$SERVER" >>"$sub_dir/config.yaml"
+  fi
+  cat >>"$sub_dir/config.yaml" <<EOF
 rules:
+  # 回国流量：国内域名/IP 直连，不走代理（按需可改为 REJECT）
+  - GEOIP,CN,DIRECT
+  - DOMAIN-SUFFIX,cn,DIRECT
   - MATCH,Proxy
 EOF
   chmod 0644 "$sub_dir/config.yaml"

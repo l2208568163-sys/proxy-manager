@@ -89,7 +89,7 @@ proxy
 Main menu (v3.3.0, simplified):
 ```
 ================================
- Proxy Manager v3.3.0
+ Proxy Manager v3.4.0
 ================================
 Services — Xray:running | Dashboard:running | Nginx:running
  1. Xray Reality
@@ -182,6 +182,7 @@ Proxy-Manager
 - [x] **v3.2.8** Security hardening + UI overhaul: random-token subscription path / removed default-credential fallback (login refused without web.env) / dashboard binds 127.0.0.1 by default (public access is opt-in) / restart switched to POST with confirmation / log output HTML-escaped / brand-new dark dashboard theme
 - [x] **v3.2.9** Reliability: `proxy update` refreshes panel deps & systemd unit and restarts the panel / install.sh always refreshes the apt index / mihomo download picks assets explicitly (standard build first, compatible fallback) with gzip integrity check + GITHUB_TOKEN support / dedicated nginx site config (auto-rollback on failure, default site restored on uninstall) / login rate limiting
 - [x] **v3.2.10** Regression fixes: `update.sh` resolved `BASE_DIR` one level too high, making `proxy update` entirely unusable / `restart_if_active` returned non-zero for stopped services, aborting the update flow / menu no longer exits when a sub-command fails / `env_upsert` rewritten with awk (values containing `&`, `|`, `\` were silently corrupted) / `core.fileMode=false` stops chmod from keeping the work tree permanently dirty and blocking `git pull`
+- [x] **v3.4.0** **primary path rebuild: TCP 443 + local camouflage site + Hysteria2 fallback**: VLESS+Vision+REALITY pinned to TCP 443 with `dest` pointing at a self-hosted HTTPS site (self-signed cert, nginx on 127.0.0.1:8443); added Hysteria2 fallback (UDP 443 + port hopping 20000-40000 via iptables REDIRECT); Clash subscription now ships a hysteria2 proxy and `GEOIP,CN → DIRECT` rules; web panel is no longer installed by default (`INSTALL_PANEL=1` to enable)
 - [x] **v3.3.0** Simplification refactor: removed the Mihomo client and DNS/AdGuard modules (wrong role on a server node, port-53 conflicts, TUN once took down SSH) / removed `server-fix-proxy.sh` and unreferenced config templates / BBR moved into install.sh by default, fail2ban now behind the explicit `--harden` flag / nginx publishing merged into `subscription.sh` (auto-publish after generation) / `webpanel.sh` renamed to `panel.sh` / main menu trimmed from 12 to 7 items / LF enforced via `.gitattributes`
 - [x] **WebUI rebuild** Multi-page console: base shell + overview / nodes / subs / services / security / settings + login / logs / result pages; unified dark design system, sidebar nav, SVG ring gauges, subscription QR (generated via qrcode, placeholder if missing), restart as POST + confirmation, and log bodies auto-escaped by Jinja2 against XSS.
 - [ ] **v3.4** Multi-node management / traffic stats / API management

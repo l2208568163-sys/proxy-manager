@@ -168,11 +168,13 @@ else
 fi
 
 ####################################################
-# Install Web Dashboard (auto, best-effort)
+# Web Dashboard (默认关闭；需要时 INSTALL_PANEL=1 bash install.sh)
 ####################################################
-if [[ -f "$INSTALL_DIR/modules/panel.sh" ]]; then
+if [[ "${INSTALL_PANEL:-0}" == "1" && -f "$INSTALL_DIR/modules/panel.sh" ]]; then
   info "安装 Web 管理面板"
   bash "$INSTALL_DIR/modules/panel.sh" install || warn "Web 面板安装失败，可稍后运行 proxy 主菜单 3 重新安装"
+else
+  info "跳过 Web 管理面板（默认关闭，避免额外对外暴露面）"
 fi
 
 ####################################################
@@ -215,7 +217,7 @@ echo "
 命令:   proxy
 版本:   $VERSION
 "
-if [[ -f "$INSTALL_DIR/data/web.env" ]]; then
+if [[ "${INSTALL_PANEL:-0}" == "1" && -f "$INSTALL_DIR/data/web.env" ]]; then
   # shellcheck disable=SC1090
   source "$INSTALL_DIR/data/web.env"
   IP="$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')"
@@ -226,10 +228,15 @@ if [[ -f "$INSTALL_DIR/data/web.env" ]]; then
   else
     echo "Web 控制台: 默认仅本机监听 127.0.0.1:8080"
     echo "  访问方式: ssh -L 8080:127.0.0.1:8080 用户@$IP 后打开 http://localhost:8080"
-    echo "  公网访问: proxy → 3（Web 管理中心）→ 7 开启『公网访问开关』"
   fi
+else
+  echo
+  echo "Web 面板: 未安装（默认关闭，减少攻击面）"
+  echo "  如需启用: INSTALL_PANEL=1 bash install.sh"
 fi
 echo
-echo "下一步: 运行 proxy 打开主菜单；选 1 生成 Xray 节点（订阅会自动生成并发布）、选 3 管理 Web 面板"
+echo "下一步: 运行 proxy 打开主菜单；选 1 生成主力链路（VLESS+Vision+REALITY TCP443，订阅自动发布）、选 6 配置 Hysteria2 备用链路"
+echo "========================================
+"
 echo "========================================
 "
