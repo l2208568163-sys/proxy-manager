@@ -111,6 +111,7 @@ show_credentials() {
 reset_password() {
   require_command openssl
   local pass user="admin"
+  # shellcheck disable=SC1090
   [[ -f "$WEB_ENV" ]] && user="$( ( source "$WEB_ENV"; echo "${WEB_USER:-admin}" ) )"
   pass="$(openssl rand -hex 12)"
   install -d -m 0700 "$DATA_DIR"

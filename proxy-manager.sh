@@ -30,8 +30,8 @@ status_hy2() {
   printf '运行中(UDP:%s)' "${HY2_PORT:-?}"
 }
 status_cert() {
-  local kind subj end days
-  IFS='|' read -r kind subj end days <<<"$(cert_summary)"
+  local kind subj days
+  IFS='|' read -r kind subj _ days <<<"$(cert_summary)"
   if [[ "$kind" == "none" ]]; then printf '无证书'; return; fi
   printf '%s · %s · %s 天' "$kind" "$subj" "$days"
 }

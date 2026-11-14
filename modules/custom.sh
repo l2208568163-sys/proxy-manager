@@ -17,8 +17,8 @@ rebuild_vless_uri() {
 
 show_params() {
   load_node_data || return 1
-  local kind subj end days
-  IFS='|' read -r kind subj end days <<<"$(cert_summary)"
+  local kind subj days
+  IFS='|' read -r kind subj _ days <<<"$(cert_summary)"
   say "────────────────────────────────────────"
   printf '  %-16s %s\n' "服务器 IP"   "${SERVER}"
   printf '  %-16s %s\n' "主力端口"   "${PORT}/tcp (VLESS+Vision+REALITY)"
@@ -118,9 +118,9 @@ regen_token() {
 edit_raw() {
   local ed="${EDITOR:-}"
   if [[ -z "$ed" ]]; then
-    if command -v nano >/dev/null 2>&1; then ed=nano
-    elif command -v vim >/dev/null 2>&1; then ed=vim
-    elif command -v vi >/dev/null 2>&1; then ed=vi
+    if command -v nano >/dev/null 2>&1; then ed="nano"
+    elif command -v vim >/dev/null 2>&1; then ed="vim"
+    elif command -v vi >/dev/null 2>&1; then ed="vi"
     else say "✗ 系统没有可用的编辑器（nano/vim/vi）。"; return 1; fi
   fi
   cp -a "$NODE_FILE" "${NODE_FILE}.bak.$(date +%Y%m%d-%H%M%S)"
@@ -129,7 +129,8 @@ edit_raw() {
 }
 
 backup_config() {
-  local dir="/opt/proxy-config-backup-$(date +%Y%m%d-%H%M%S)"
+  local dir
+  dir="/opt/proxy-config-backup-$(date +%Y%m%d-%H%M%S)"
   install -d -m 0700 "$dir"
   cp -a "$NODE_FILE" "$dir/" 2>/dev/null || true
   [[ -f /usr/local/etc/xray/config.json ]] && cp -a /usr/local/etc/xray/config.json "$dir/" 2>/dev/null || true
@@ -163,8 +164,8 @@ apply_all() {
   rewrite_xray_config || return 1
   say "正在重建订阅..."
   "$SCRIPT_DIR/subscription.sh" generate || { say "✗ 订阅重建失败。"; return 1; }
-  local kind subj end days
-  IFS='|' read -r kind subj end days <<<"$(cert_summary)"
+  local kind subj days
+  IFS='|' read -r kind subj _ days <<<"$(cert_summary)"
   say "────────────────────────────────────────"
   say "✓ 配置已应用"
   say "  节点: $(grep '^VLESS_URI=' "$NODE_FILE" | cut -d= -f2- | tr -d '\"')"
