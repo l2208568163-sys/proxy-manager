@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../lib/common.sh
+# shellcheck source=../lib/common.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/common.sh"
 
 # ---- nginx 订阅站点（原 modules/web.sh 并入，见 v3.3.0 精简重构）----

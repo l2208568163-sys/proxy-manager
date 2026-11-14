@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../lib/common.sh
+# shellcheck source=../lib/common.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/common.sh"
 
 CERT_FILE="/etc/ssl/certs/camo.crt"
@@ -123,6 +123,7 @@ bind_domain() {
 
   say "正在重写 Xray 配置并重启（serverNames → ${d}）..."
   rewrite_xray_config || { say "✗ Xray 重载失败，证书已就位但配置未生效。"; return 1; }
+# shellcheck disable=SC2015
   "$SCRIPT_DIR/subscription.sh" generate >/dev/null 2>&1 && say "✓ 订阅已重建" || say "⚠ 订阅重建失败，请在主菜单 6 手动重试"
 
   say ""

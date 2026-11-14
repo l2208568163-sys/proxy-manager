@@ -3,7 +3,7 @@ set -Eeuo pipefail
 # 本脚本位于项目根目录，dirname 已是根（不要再拼 /..，否则会解析到上一级）
 BASE_DIR="${BASE_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
 [[ -f "$BASE_DIR/lib/common.sh" ]] || { echo "错误: 未定位到项目根目录（解析为 $BASE_DIR），请从项目目录内运行。" >&2; exit 1; }
-# shellcheck source=lib/common.sh
+# shellcheck source=lib/common.sh disable=SC1091
 source "$BASE_DIR/lib/common.sh"
 require_root
 git -C "$BASE_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "Installed project is not a Git checkout."

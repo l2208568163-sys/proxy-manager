@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../lib/common.sh
+# shellcheck source=../lib/common.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/common.sh"
 
 # ===== 链路设计（v3.4.0）=====

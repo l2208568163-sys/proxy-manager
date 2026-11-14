@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../lib/common.sh
+# shellcheck source=../lib/common.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/common.sh"
 
 VLESS_URI_FILE="$NODE_FILE"
@@ -40,6 +40,7 @@ set_port() {
   load_node_data || return 1
   local p
   read -r -p "新的主力端口 [1-65535，当前 ${PORT}]: " p
+# shellcheck disable=SC2015
   [[ "$p" =~ ^[0-9]+$ ]] && (( p >= 1 && p <= 65535 )) || { say "✗ 端口必须是 1-65535 的整数。"; return 1; }
   if [[ "$p" == "$PORT" ]]; then say "端口未变化。"; return 0; fi
   if port_in_use "$p" && ! ss -lntp 2>/dev/null | grep -w "$p" | grep -qi xray; then
@@ -94,6 +95,7 @@ set_hy2() {
   fi
   local p h
   read -r -p "Hysteria2 UDP 端口 [当前 ${HY2_PORT}]: " p
+# shellcheck disable=SC2015
   [[ "$p" =~ ^[0-9]+$ ]] && (( p >= 1 && p <= 65535 )) || { say "✗ 端口非法。"; return 1; }
   read -r -p "端口跳跃范围 [起-止，当前 ${HY2_HOP}]: " h
   [[ "$h" =~ ^[0-9]+-[0-9]+$ ]] || { say "✗ 格式应为 20000-40000。"; return 1; }
@@ -147,6 +149,7 @@ restore_config() {
   for d in "${dirs[@]}"; do say "  ${i}) $(basename "$d")"; i=$((i+1)); done
   local c
   read -r -p "选择要恢复的备份编号（0 取消）: " c
+# shellcheck disable=SC2015
   [[ "$c" =~ ^[0-9]+$ ]] && (( c >= 1 && c <= ${#dirs[@]} )) || { say "已取消。"; return 0; }
   d="${dirs[$((c-1))]}"
   confirm "确认用 $(basename "$d") 覆盖当前配置？" || { say "已取消。"; return 0; }

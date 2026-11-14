@@ -219,6 +219,7 @@ echo "
 "
 if [[ "${INSTALL_PANEL:-0}" == "1" && -f "$INSTALL_DIR/data/web.env" ]]; then
   # shellcheck disable=SC1090
+# shellcheck disable=SC1091
   source "$INSTALL_DIR/data/web.env"
   IP="$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')"
   echo

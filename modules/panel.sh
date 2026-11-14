@@ -100,6 +100,7 @@ stop_panel()  { systemctl stop proxy-web; say "Web 面板已停止。"; }
 show_credentials() {
   if [[ -f "$WEB_ENV" ]]; then
     # shellcheck disable=SC1090
+# shellcheck disable=SC1091
     source "$WEB_ENV"
     say "用户名: ${WEB_USER:-admin}"
     say "密码:   ${WEB_PASS:-<未设置，请运行重置密码>}"
