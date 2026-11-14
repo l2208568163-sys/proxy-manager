@@ -23,6 +23,8 @@ key() { awk -F': *' -v n="$1" 'tolower($0) ~ n {sub(/^[^:]*:[[:space:]]*/, ""); 
 # 未通过 REALITY 认证的扫描流量会看到一张正常的自建网站页面，而不是被拒绝。
 install_camouflage_site() {
   require_command openssl
+  command -v nginx >/dev/null 2>&1 \
+    || die "未安装 nginx：伪装站点依赖 nginx。请先运行 install.sh，或执行 apt-get install -y nginx。"
   install -d -m 0755 "$CAMO_WEB_DIR/assets" /etc/ssl/private
   if [[ ! -f "$CAMO_CERT" || ! -f "$CAMO_KEY" ]]; then
     say "生成自签证书（CN=$CAMO_DOMAIN）..."
@@ -150,7 +152,9 @@ NODE_NAME=Reality-${server}
 VLESS_URI="vless://${uuid}@${server}:${port}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${CAMO_DOMAIN}&fp=chrome&pbk=${public}&sid=${short}&type=tcp#Reality-${server}"
 EOF
   chmod 0600 "$NODE_FILE"
-  systemctl enable --now xray
+  # 必须用 restart：xray 已在运行时 `enable --now` 是 no-op，旧进程会继续跑旧配置
+  systemctl enable xray >/dev/null 2>&1 || true
+  systemctl restart xray
   if ! wait_for_listen 443 20; then
     say "⚠ 警告: Xray 未在 443 监听，正在排查..."
     ss -lntp 2>/dev/null | grep -w 443 || say "（当前无进程监听 443）"
@@ -216,7 +220,8 @@ LimitNOFILE=1048576
 WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
-  systemctl enable --now hysteria-server
+  systemctl enable hysteria-server >/dev/null 2>&1 || true
+  systemctl restart hysteria-server
   sleep 2
   systemctl is-active hysteria-server >/dev/null || die "hysteria-server 启动失败，请运行 journalctl -u hysteria-server 查看。"
 
@@ -234,10 +239,14 @@ ExecStop=/bin/bash -c 'iptables -t nat -D PREROUTING -p udp --dport ${HY2_HOP//-
 WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
-  systemctl enable --now hysteria-porthop
+  systemctl enable hysteria-porthop >/dev/null 2>&1 || true
+  systemctl restart hysteria-porthop
   command -v ufw >/dev/null && ufw status | grep -q 'Status: active' && { ufw allow "${HY2_PORT}/udp"; ufw allow "${HY2_HOP//-/:}/udp"; ufw reload; } || true
 
   srv="$(detect_public_ip || true)"
+  # 边界：允许先装 Hysteria2 再装主力链路，此时 node.env 还不存在
+  install -d -m 0755 "$DATA_DIR"
+  [[ -f "$NODE_FILE" ]] || install -m 0600 /dev/null "$NODE_FILE"
   for k in HY2 HY2_PORT HY2_PASSWORD HY2_HOP HY2_SNI; do sed -i "/^${k}=/d" "$NODE_FILE"; done
   {
     echo "HY2=1"

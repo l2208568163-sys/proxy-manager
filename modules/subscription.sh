@@ -115,6 +115,8 @@ EOF
   # 备用链路：Hysteria2（UDP + 端口跳跃）。仅在 node.env 记录 HY2=1 时生成。
   # 自签证书 → skip-cert-verify；ports 为 Mihomo 的端口跳跃字段。
   if [[ "${HY2:-0}" == "1" && -n "${HY2_PASSWORD:-}" ]]; then
+    systemctl is-active --quiet hysteria-server 2>/dev/null \
+      || say "⚠ 注意: HY2=1 但 hysteria-server 未运行，订阅里的 Hysteria2 节点暂不可用（可运行 Xray 菜单 6 重装）。"
     cat >>"$sub_dir/config.yaml" <<EOF
   - name: "HY2-$SERVER"
     type: hysteria2
@@ -194,7 +196,9 @@ EOF
 
 # ---- 发布（幂等）：配置 nginx 站点并放行 80 ----
 publish() {
-  require_command nginx || { say "⚠ 未安装 nginx，订阅文件仅在服务器本地可用。"; return 1; }
+  # 注意：这里必须 return 1 而不是 require_command（后者会 die/exit，
+  # 会把调用它的 generate_and_publish 与整个菜单一起带走）
+  command -v nginx >/dev/null 2>&1 || { say "⚠ 未安装 nginx，订阅文件仅在服务器本地可用。"; return 1; }
   install -d -m 0755 "$WEB_ROOT"
   systemctl enable --now nginx
   configure_nginx

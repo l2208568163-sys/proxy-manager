@@ -49,8 +49,9 @@ fi
 # ---- 1/11 停止并禁用服务 ----
 # mihomo / AdGuardHome / fail2ban 自 v3.3.0 起已不再安装，这里保留 stop/disable
 # 以便清理「旧版本装过」的机器（对没装过的机器是无害 no-op）
+# hysteria-server / hysteria-porthop 是 v3.4.0 新增的备用链路
 info "1/11" "停止并禁用相关服务"
-SERVICES=(xray mihomo AdGuardHome nginx proxy-web fail2ban)
+SERVICES=(xray mihomo AdGuardHome nginx proxy-web fail2ban hysteria-server hysteria-porthop)
 for s in "${SERVICES[@]}"; do
   systemctl stop   "$s" 2>/dev/null || true
   systemctl disable "$s" 2>/dev/null || true
@@ -60,8 +61,12 @@ done
 info "2/11" "删除 systemd 服务单元"
 rm -f /etc/systemd/system/xray.service /etc/systemd/system/xray.service.d \
       /etc/systemd/system/mihomo.service \
-      /etc/systemd/system/proxy-web.service
+      /etc/systemd/system/proxy-web.service \
+      /etc/systemd/system/hysteria-server.service \
+      /etc/systemd/system/hysteria-porthop.service
 systemctl daemon-reload 2>/dev/null || true
+# 端口跳跃规则由 hysteria-porthop 的 ExecStop 删除；服务已被 disable --now 时再兜底删一次
+iptables -t nat -D PREROUTING -p udp --dport 20000:40000 -j REDIRECT --to-ports 443 2>/dev/null || true
 
 # ---- 3/11 删除 Xray ----
 info "3/11" "删除 Xray"
@@ -70,6 +75,11 @@ rm -rf /usr/local/bin/xray /usr/local/etc/xray
 # ---- 4/11 删除 Mihomo（legacy：仅旧版本装过）----
 info "4/11" "删除 Mihomo（如存在）"
 rm -rf /usr/local/bin/mihomo /etc/mihomo /var/log/mihomo
+
+# ---- 4b/11 删除 Hysteria2（v3.4.0 备用链路）----
+info "4b/11" "删除 Hysteria2（如存在）"
+rm -f /usr/local/bin/hysteria
+rm -rf /etc/hysteria
 
 # ---- 5/11 删除 AdGuard Home（legacy：仅旧版本装过）----
 info "5/11" "删除 AdGuard Home（如存在）"
