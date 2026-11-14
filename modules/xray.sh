@@ -8,7 +8,12 @@ source "$SCRIPT_DIR/../lib/common.sh"
 # 主力：VLESS + Vision + REALITY，TCP 443；伪装目标指向本机自建 HTTPS 站点（自签证书）。
 # 备用：Hysteria2，UDP 443（与 TCP 443 不冲突）+ 端口跳跃 20000-40000（iptables REDIRECT）。
 # Web 面板默认不启用（见 install.sh）。
-CAMO_DOMAIN="${REALITY_SERVER_NAME:-www.local-cloud.net}"
+CAMO_DOMAIN="${REALITY_SERVER_NAME:-}"
+if [[ -z "$CAMO_DOMAIN" && -n "${NODE_FILE:-}" && -f "$NODE_FILE" ]]; then
+  # 已绑定域名（主菜单 4）时沿用 node.env 里的 SNI，重跑安装不会被自签域名覆盖
+  CAMO_DOMAIN="$(grep '^SNI=' "$NODE_FILE" 2>/dev/null | cut -d= -f2- || true)"
+fi
+CAMO_DOMAIN="${CAMO_DOMAIN:-www.local-cloud.net}"
 CAMO_HTTPS_PORT="${CAMO_HTTPS_PORT:-8443}"
 CAMO_WEB_DIR="/var/www/camouflage"
 CAMO_CERT="/etc/ssl/certs/camo.crt"
